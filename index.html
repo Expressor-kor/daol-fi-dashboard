@@ -1,0 +1,734 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DAOL Weekly FI Strategy Dashboard</title>
+  <link rel="stylesheet" href="styles.css?v=market-tooltip-20260602">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">D</div>
+        <div>
+          <p>DAOL</p>
+          <h1>FI Strategy Board</h1>
+        </div>
+      </div>
+
+      <nav class="nav-list" aria-label="화면 이동">
+        <button class="nav-button active" type="button" data-view="overview">Status</button>
+        <button class="nav-button" type="button" data-view="opinion">의견 입력</button>
+        <button class="nav-button" type="button" data-view="weeklySummary">주차별 종합의견</button>
+        <button class="nav-button" type="button" data-view="duration">Strategy trends</button>
+        <button class="nav-button" type="button" data-view="performance">성과 추이</button>
+        <button class="nav-button" type="button" data-view="settings">설정</button>
+        <button class="nav-button" type="button" data-view="archive">Archive</button>
+      </nav>
+
+      <div class="week-card">
+        <label for="weekSelect">기준 회의</label>
+        <select id="weekSelect"></select>
+        <div id="archiveStatus" class="archive-status" aria-live="polite">
+          <strong>Archive</strong>
+          <span>Not closed</span>
+        </div>
+        <textarea id="archiveMemo" rows="3" placeholder="Archive memo"></textarea>
+        <button class="ghost-button" id="archiveWeekButton" type="button">Archive week</button>
+        <button class="ghost-button" id="currentWeekButton" type="button">현재 주차</button>
+      </div>
+
+      <div class="storage-card">
+        <p>저장 방식</p>
+        <strong>SharePoint Lists + local fallback</strong>
+        <span>공동 데이터는 SharePoint에 저장하고, 실패 시 로컬 화면과 저장을 유지합니다.</span>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Weekly Fixed Income Strategy</p>
+          <h2 id="pageTitle">Status</h2>
+        </div>
+        <div class="toolbar">
+          <div class="auth-toolbar" aria-live="polite">
+            <button class="icon-button" id="msSignInButton" type="button" title="Microsoft login">Login</button>
+            <button class="icon-button" id="graphTestButton" type="button" title="SharePoint connection test">Test</button>
+            <button class="icon-button" id="sharePointLoadButton" type="button" title="SharePoint 데이터 불러오기">Load</button>
+            <span id="msAuthStatus">Microsoft 연결 대기</span>
+          </div>
+          <button class="icon-button" id="exportJsonButton" type="button" title="JSON 내보내기">JSON</button>
+          <label class="icon-button file-button" title="Import JSON">
+            Import
+            <input id="importJsonInput" type="file" accept="application/json">
+          </label>
+          <button class="icon-button" id="exportCsvButton" type="button" title="CSV 내보내기">CSV</button>
+        </div>
+      </header>
+
+      <section class="view active" id="overviewView" data-title="Status">
+        <div class="kpi-grid">
+          <article class="metric">
+            <span>참여자</span>
+            <strong id="kpiParticipants">-</strong>
+            <small id="kpiActiveMembers">활성 구성원 -</small>
+          </article>
+          <article class="metric">
+            <span>금리 방향성 주간 평균</span>
+            <strong id="kpiRateDuration">-</strong>
+            <small>BM 대비 듀레이션</small>
+          </article>
+          <article class="metric">
+            <span>커브 주간 평균</span>
+            <strong id="kpiCurveDuration">-</strong>
+            <small>10Y-3Y 스프레드</small>
+          </article>
+          <article class="metric">
+            <span>크레딧 주간 평균</span>
+            <strong id="kpiCreditDuration">-</strong>
+            <small>여전 AA- 2Y - 통안 2Y</small>
+          </article>
+        </div>
+
+        <div class="content-grid overview-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>YTD 랭킹 TOP 3</h3>
+                <p>선택한 전략의 확정 손익을 구성원별로 집계합니다.</p>
+              </div>
+              <label class="inline-control" for="topRankingMetricSelect">
+                전략
+                <select id="topRankingMetricSelect">
+                  <option value="rate">금리 방향성</option>
+                  <option value="curve">커브</option>
+                  <option value="credit">크레딧</option>
+                </select>
+              </label>
+            </div>
+            <div id="topRanking" class="ranking-list"></div>
+            <details class="ranking-details">
+              <summary>전체 구성원 누적점수 보기</summary>
+              <div class="table-wrap compact-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>순위</th>
+                      <th>구성원</th>
+                      <th>금리</th>
+                      <th>커브</th>
+                      <th>크레딧</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fullRankingTable"></tbody>
+                </table>
+              </div>
+            </details>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>금주 컨센서스</h3>
+                <p>전략별 주간 평균, 중앙값, 평균 레인지</p>
+              </div>
+            </div>
+            <div id="weekConsensus" class="summary-stack"></div>
+          </article>
+        </div>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>이번 주 시장 변화</h3>
+              <p>기준 주차 시장 데이터의 전주 대비 변화폭</p>
+            </div>
+          </div>
+          <div id="marketMovementList" class="market-movement-grid"></div>
+        </article>
+      </section>
+
+      <section class="view" id="opinionView" data-title="의견 입력">
+        <form id="opinionForm" class="opinion-layout">
+          <article class="panel form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>구성원</h3>
+                <p>의견을 사용할 회의와 구성원을 선택합니다.</p>
+              </div>
+            </div>
+            <div class="form-grid opinion-lookup-grid">
+              <label>의견 회의
+                <select id="opinionWeek" name="week" required></select>
+              </label>
+              <label>구성원
+                <select id="opinionMember" name="memberId" required></select>
+              </label>
+              <button class="ghost-button lookup-button" id="loadOpinionButton" type="button">조회</button>
+            </div>
+            <div id="opinionLookupStatus" class="summary-status">회의와 구성원을 선택한 뒤 조회할 수 있습니다.</div>
+          </article>
+
+          <article class="panel form-panel strategy-form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>금리 방향성</h3>
+                <p>금리 하락 베팅은 +, 상승 베팅은 -</p>
+              </div>
+            </div>
+            <div class="form-grid strategy-input-grid">
+              <label>입력 여부
+                <select name="rateStatus" data-strategy-status="rate">
+                  <option value="active">입력</option>
+                  <option value="skip">생략</option>
+                </select>
+              </label>
+              <label>듀레이션
+                <input name="rateDuration" type="number" step="0.01" placeholder="+0.10">
+              </label>
+              <label>레인지 상단(%)
+                <input name="ktb3yRangeHigh" type="number" step="0.001" required>
+              </label>
+              <label>레인지 하단(%)
+                <input name="ktb3yRangeLow" type="number" step="0.001" required>
+              </label>
+              <label>확신도
+                <select name="rateConfidence">
+                  <option value="3">3 보통</option>
+                  <option value="1">1 낮음</option>
+                  <option value="2">2 다소 낮음</option>
+                  <option value="4">4 높음</option>
+                  <option value="5">5 매우 높음</option>
+                </select>
+              </label>
+              <label class="full">금리 방향성 근거 입력
+                <textarea name="rateRationaleText" rows="3" placeholder="금리 방향성 판단 근거를 입력합니다."></textarea>
+              </label>
+            </div>
+          </article>
+
+          <article class="panel form-panel strategy-form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>커브</h3>
+                <p>3Y-10Y 스프레드 축소 베팅은 +, 확대 베팅은 -</p>
+              </div>
+            </div>
+            <div class="form-grid strategy-input-grid">
+              <label>입력 여부
+                <select name="curveStatus" data-strategy-status="curve">
+                  <option value="active">입력</option>
+                  <option value="skip">생략</option>
+                </select>
+              </label>
+              <label>듀레이션
+                <input name="curveDuration" type="number" step="0.01" placeholder="-0.20" required>
+              </label>
+              <label>레인지 상단(bp)
+                <input name="curveSpreadRangeHigh" type="number" step="0.1" required>
+              </label>
+              <label>레인지 하단(bp)
+                <input name="curveSpreadRangeLow" type="number" step="0.1" required>
+              </label>
+              <label>확신도
+                <select name="curveConfidence">
+                  <option value="3">3 보통</option>
+                  <option value="1">1 낮음</option>
+                  <option value="2">2 다소 낮음</option>
+                  <option value="4">4 높음</option>
+                  <option value="5">5 매우 높음</option>
+                </select>
+              </label>
+              <label class="full">커브 근거 입력
+                <textarea name="curveRationaleText" rows="3" placeholder="커브 판단 근거를 입력합니다."></textarea>
+              </label>
+            </div>
+          </article>
+
+          <article class="panel form-panel strategy-form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>크레딧</h3>
+                <p>여전채-통안 스프레드 축소 베팅은 +, 확대 베팅은 -</p>
+              </div>
+            </div>
+            <div class="form-grid strategy-input-grid">
+              <label>입력 여부
+                <select name="creditStatus" data-strategy-status="credit">
+                  <option value="active">입력</option>
+                  <option value="skip">생략</option>
+                </select>
+              </label>
+              <label>듀레이션
+                <input name="creditDuration" type="number" step="0.01" placeholder="+0.05" required>
+              </label>
+              <label>레인지 상단(bp)
+                <input name="creditSpreadRangeHigh" type="number" step="0.1" required>
+              </label>
+              <label>레인지 하단(bp)
+                <input name="creditSpreadRangeLow" type="number" step="0.1" required>
+              </label>
+              <label>확신도
+                <select name="creditConfidence">
+                  <option value="3">3 보통</option>
+                  <option value="1">1 낮음</option>
+                  <option value="2">2 다소 낮음</option>
+                  <option value="4">4 높음</option>
+                  <option value="5">5 매우 높음</option>
+                </select>
+              </label>
+              <label class="full">크레딧 근거 입력
+                <textarea name="creditRationaleText" rows="3" placeholder="크레딧 판단 근거를 입력합니다."></textarea>
+              </label>
+            </div>
+          </article>
+
+          <div class="form-actions opinion-actions">
+            <button class="primary-button" type="submit">Save opinion</button>
+            <button class="ghost-button" id="clearOpinionButton" type="button">입력 지우기</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="view" id="durationView" data-title="Strategy trends">
+        <div id="durationCharts" class="stacked-panels"></div>
+      </section>
+
+      <section class="view" id="weeklySummaryView" data-title="주차별 종합의견">
+        <form id="weeklySummaryForm" class="opinion-layout">
+          <article class="panel form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>주차 선택</h3>
+                <p>과거 주차를 포함해 저장된 종합의견을 수정할 수 있습니다.</p>
+              </div>
+              <button class="ghost-button" id="weeklySummaryDraftButton" type="button">AI 초안 채우기</button>
+            </div>
+            <div class="form-grid two-col">
+              <label>종합의견 주차
+                <select id="weeklySummaryWeek" name="week" required></select>
+              </label>
+              <div class="summary-status" id="weeklySummaryStatus" aria-live="polite">저장된 종합의견 없음</div>
+            </div>
+          </article>
+
+          <article class="panel form-panel strategy-form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>전체 종합</h3>
+                <p>이번 주 전략 의견의 핵심 결론을 정리합니다.</p>
+              </div>
+            </div>
+            <label class="full">종합의견
+              <textarea name="overallSummaryText" rows="6" placeholder="주차별 전체 종합의견을 입력합니다."></textarea>
+            </label>
+          </article>
+
+          <article class="panel form-panel strategy-form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>금리 방향성</h3>
+                <p>금리 전략 의견을 종합합니다.</p>
+              </div>
+            </div>
+            <div class="form-grid strategy-input-grid">
+              <label>입력 여부
+                <select name="rateStatus" data-strategy-status="rate">
+                  <option value="active">입력</option>
+                  <option value="skip">생략</option>
+                </select>
+              </label>
+              <label>듀레이션
+                <input name="rateDuration" type="number" step="0.01" placeholder="+0.10" required>
+              </label>
+              <label>레인지 상단(%)
+                <input name="ktb3yRangeHigh" type="number" step="0.001">
+              </label>
+              <label>레인지 하단(%)
+                <input name="ktb3yRangeLow" type="number" step="0.001">
+              </label>
+              <label>확신도
+                <select name="rateConfidence">
+                  <option value="3">3 보통</option>
+                  <option value="1">1 낮음</option>
+                  <option value="2">2 다소 낮음</option>
+                  <option value="4">4 높음</option>
+                  <option value="5">5 매우 높음</option>
+                </select>
+              </label>
+            </div>
+            <label class="full">금리 방향성 종합
+              <textarea name="rateSummaryText" rows="5" placeholder="금리 방향성 종합의견을 입력합니다."></textarea>
+            </label>
+          </article>
+
+          <article class="panel form-panel strategy-form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>커브</h3>
+                <p>커브 전략 의견을 종합합니다.</p>
+              </div>
+            </div>
+            <div class="form-grid strategy-input-grid">
+              <label>입력 여부
+                <select name="curveStatus" data-strategy-status="curve">
+                  <option value="active">입력</option>
+                  <option value="skip">생략</option>
+                </select>
+              </label>
+              <label>듀레이션
+                <input name="curveDuration" type="number" step="0.01" placeholder="-0.20">
+              </label>
+              <label>레인지 상단(bp)
+                <input name="curveSpreadRangeHigh" type="number" step="0.1">
+              </label>
+              <label>레인지 하단(bp)
+                <input name="curveSpreadRangeLow" type="number" step="0.1">
+              </label>
+              <label>확신도
+                <select name="curveConfidence">
+                  <option value="3">3 보통</option>
+                  <option value="1">1 낮음</option>
+                  <option value="2">2 다소 낮음</option>
+                  <option value="4">4 높음</option>
+                  <option value="5">5 매우 높음</option>
+                </select>
+              </label>
+            </div>
+            <label class="full">커브 종합
+              <textarea name="curveSummaryText" rows="5" placeholder="커브 종합의견을 입력합니다."></textarea>
+            </label>
+          </article>
+
+          <article class="panel form-panel strategy-form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>크레딧</h3>
+                <p>크레딧 전략 의견을 종합합니다.</p>
+              </div>
+            </div>
+            <div class="form-grid strategy-input-grid">
+              <label>입력 여부
+                <select name="creditStatus" data-strategy-status="credit">
+                  <option value="active">입력</option>
+                  <option value="skip">생략</option>
+                </select>
+              </label>
+              <label>듀레이션
+                <input name="creditDuration" type="number" step="0.01" placeholder="+0.05">
+              </label>
+              <label>레인지 상단(bp)
+                <input name="creditSpreadRangeHigh" type="number" step="0.1">
+              </label>
+              <label>레인지 하단(bp)
+                <input name="creditSpreadRangeLow" type="number" step="0.1">
+              </label>
+              <label>확신도
+                <select name="creditConfidence">
+                  <option value="3">3 보통</option>
+                  <option value="1">1 낮음</option>
+                  <option value="2">2 다소 낮음</option>
+                  <option value="4">4 높음</option>
+                  <option value="5">5 매우 높음</option>
+                </select>
+              </label>
+            </div>
+            <label class="full">크레딧 종합
+              <textarea name="creditSummaryText" rows="5" placeholder="크레딧 종합의견을 입력합니다."></textarea>
+            </label>
+          </article>
+
+          <div class="form-actions opinion-actions">
+            <button class="primary-button" type="submit">완료 저장</button>
+            <button class="ghost-button" id="clearWeeklySummaryButton" type="button">입력 지우기</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="view" id="performanceView" data-title="성과 추이">
+        <div class="content-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>개인별 주간 성과</h3>
+                <p>단위는 bp입니다.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="performance-table">
+                <thead>
+                  <tr>
+                    <th>구성원</th>
+                    <th>금리</th>
+                    <th>커브</th>
+                    <th>크레딧</th>
+                    <th>평가 구간</th>
+                  </tr>
+                </thead>
+                <tbody id="weeklyPerformanceTable"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>주간 성과 분포</h3>
+                <p>금리, 커브, 크레딧 성과 기준</p>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <svg id="weeklyPerformanceChart"></svg>
+            </div>
+          </article>
+        </div>
+        <div class="content-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>개인별 YTD 성과</h3>
+                <p>단위는 bp입니다.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="performance-table">
+                <thead>
+                  <tr>
+                    <th>구성원</th>
+                    <th>금리</th>
+                    <th>커브</th>
+                    <th>크레딧</th>
+                    <th>평가 주차</th>
+                  </tr>
+                </thead>
+                <tbody id="performanceMemberTable"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>개인별 YTD 추이</h3>
+                <p>선택 지표 기준 누적 성과</p>
+              </div>
+              <label class="inline-control" for="performanceMetricSelect">
+                지표
+                <select id="performanceMetricSelect">
+                  <option value="rate">금리 방향성</option>
+                  <option value="curve">커브</option>
+                  <option value="credit">크레딧 스프레드 성과</option>
+                </select>
+              </label>
+            </div>
+            <div class="chart-wrap">
+              <svg id="performanceChart"></svg>
+            </div>
+          </article>
+        </div>
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>주차별 손익 상세</h3>
+              <p>Wn 의견은 Wn에서 Wn+1까지의 시장 변화로 평가합니다.</p>
+            </div>
+          </div>
+          <div id="performanceDetailTable" class="week-accordion"></div>
+        </article>
+      </section>
+      <section class="view" id="archiveView" data-title="Archive">
+        <div class="content-grid">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Archive summary</h3>
+                <p>Closed weekly snapshots and versions.</p>
+              </div>
+            </div>
+            <div id="archiveSummaryList" class="archive-summary-list"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Selected archive</h3>
+                <p>Snapshot counts and market basis.</p>
+              </div>
+            </div>
+            <div class="archive-controls">
+              <label>Week
+                <select id="archiveWeekFilter"></select>
+              </label>
+              <label>Version
+                <select id="archiveVersionFilter"></select>
+              </label>
+            </div>
+            <div id="archiveSelectedDetail" class="archive-selected-detail"></div>
+            <div id="archiveMarketSnapshot" class="archive-market-snapshot"></div>
+          </article>
+        </div>
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Opinion snapshot</h3>
+              <p>Member and strategy level archived opinions.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="performance-table">
+              <thead>
+                <tr>
+                  <th>Week</th>
+                  <th>Member</th>
+                  <th>Strategy</th>
+                  <th>Duration</th>
+                  <th>Range</th>
+                  <th>Confidence</th>
+                  <th>Rationale</th>
+                </tr>
+              </thead>
+              <tbody id="archiveOpinionTable"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Result snapshot</h3>
+              <p>Archived strategy results for analysis.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="performance-table">
+              <thead>
+                <tr>
+                  <th>Week</th>
+                  <th>Member</th>
+                  <th>Strategy</th>
+                  <th>Eval week</th>
+                  <th>Delta</th>
+                  <th>PNL</th>
+                  <th>YTD</th>
+                  <th>Hit</th>
+                </tr>
+              </thead>
+              <tbody id="archiveResultTable"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="marketView" data-title="Market data">
+        <div class="entry-layout">
+          <div class="stacked-panels">
+            <article class="panel form-panel">
+              <div class="panel-head">
+                <div>
+                  <h3>금리 시계열 업로드</h3>
+                  <p>일별 금리 원천 데이터를 업로드하고, 회의별 기준일은 아래에서 지정합니다.</p>
+                </div>
+              </div>
+              <div class="upload-box">
+                <label class="file-button primary-button">
+                  엑셀 업로드
+                  <input id="rateFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                </label>
+                <div id="rateUploadStatus" class="upload-status">업로드된 금리 시계열이 없습니다.</div>
+              </div>
+              <div id="rateCoverage" class="mapping-preview"></div>
+            </article>
+
+            <form id="marketForm" class="panel form-panel">
+            <div class="panel-head">
+              <div>
+                <h3>회의 기준일 지정</h3>
+                <p>선택한 회의가 어떤 기준일의 시장 데이터를 사용할지 매핑합니다.</p>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label>회의
+                <select id="marketWeek" name="week" required></select>
+              </label>
+              <label>기준일
+                <input id="marketBaseDate" name="baseDate" type="date" required>
+              </label>
+              <label class="full">시장 메모
+                <textarea name="memo" rows="4"></textarea>
+              </label>
+            </div>
+            <div id="marketDatePreview" class="mapping-preview"></div>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Save mapping</button>
+              <button class="ghost-button" id="clearMarketButton" type="button">입력 지우기</button>
+            </div>
+            </form>
+          </div>
+          <article class="panel side-panel">
+            <h3>최근 시장 데이터</h3>
+            <div id="latestMarketList" class="rate-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="settingsView" data-title="설정">
+        <div class="content-grid">
+          <form id="memberForm" class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>구성원 명단</h3>
+                <p>의견 입력과 성과 집계의 기준 명단입니다.</p>
+              </div>
+            </div>
+            <input type="hidden" name="memberId">
+            <div class="form-grid two-col">
+              <label>이름
+                <input name="name" type="text" required>
+              </label>
+              <label>소속/역할
+                <input name="team" type="text" required>
+              </label>
+              <label>ID
+                <input name="sortOrder" type="text" inputmode="numeric" pattern="[0-9]*" value="10" required>
+                <small class="form-hint">숫자만 입력하세요.</small>
+              </label>
+              <label>상태
+                <select name="active">
+                  <option value="true">활성</option>
+                  <option value="false">비활성</option>
+                </select>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Save</button>
+              <button class="ghost-button" id="clearMemberButton" type="button">새 입력</button>
+            </div>
+          </form>
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>명단 관리</h3>
+                <p>삭제는 과거 데이터 연결을 확인한 뒤 처리합니다.</p>
+              </div>
+            </div>
+            <div class="table-wrap compact-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>이름</th>
+                    <th>소속</th>
+                    <th>상태</th>
+                    <th>관리</th>
+                  </tr>
+                </thead>
+                <tbody id="memberTable"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="vendor/msal-browser.min.js"></script>
+  <script src="app.js?v=raw-rates-force-20260602"></script>
+</body>
+</html>
