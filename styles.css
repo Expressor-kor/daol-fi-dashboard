@@ -1,3 +1,5 @@
+[hidden] { display: none !important; }
+
 :root {
   --font-light: "Pretendard Light", "Pretendard", "Malgun Gothic", Arial, sans-serif;
   --font-strong: "Pretendard", "Malgun Gothic", Arial, sans-serif;
