@@ -478,10 +478,14 @@ function setMicrosoftStatus(message, mode = "") {
 }
 
 function setMicrosoftAccountBadge(account) {
-  if (!els.msAccountBadge) return;
   const label = account?.name || account?.username || "";
-  els.msAccountBadge.textContent = label ? `로그인: ${label}` : "로그인 안 됨";
-  els.msAccountBadge.classList.toggle("signed-in", Boolean(label));
+  if (els.msAccountBadge) {
+    els.msAccountBadge.textContent = label ? `로그인: ${label}` : "로그인 안 됨";
+    els.msAccountBadge.classList.toggle("signed-in", Boolean(label));
+  }
+  if (els.msSignInButton) {
+    els.msSignInButton.hidden = Boolean(label);
+  }
 }
 
 function getMsalClient() {
