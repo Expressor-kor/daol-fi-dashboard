@@ -902,7 +902,7 @@ async function saveSharePointWeeklyOpinion(opinion) {
         creditSpreadRangeHigh: "creditRangeHigh"
       }
     ),
-    ["memberId", "memberid", "mmberId", "mmberid", "confidence", "rationaleTags", "rationaleText"]
+    ["confidence", "rationaleTags", "rationaleText"]
   );
   if (existing) {
     await graphFetch(
