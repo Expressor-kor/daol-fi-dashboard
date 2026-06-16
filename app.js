@@ -819,7 +819,7 @@ function mapSharePointOpinion(item) {
   return {
     id: appId || title || `sp-opinion-${item.id}`,
     week: String(fieldValue(fields, "week", titleWeek) || "").trim(),
-    memberId: String(fieldValueAny(fields, ["memberId", "memberid", "mmberId", "mmberid"], titleMemberId) || "").trim(),
+    memberId: (String(fieldValueAny(fields, ["memberId", "memberid", "mmberId", "mmberid"], "") || "").trim()) || titleMemberId,
     rateDuration: nullableNumber(fieldValue(fields, "rateDuration", "")),
     curveDuration: nullableNumber(fieldValue(fields, "curveDuration", "")),
     creditDuration: nullableNumber(fieldValue(fields, "creditDuration", "")),
