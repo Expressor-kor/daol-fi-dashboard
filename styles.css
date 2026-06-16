@@ -254,6 +254,17 @@ summary:focus-visible {
 .auth-toolbar.connected span { color: var(--accent-dark); }
 .auth-toolbar.error span { color: var(--red); }
 
+.auth-toolbar .account-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--muted, #8a93a6);
+  white-space: nowrap;
+}
+.auth-toolbar .account-badge.signed-in {
+  color: #1f8a4c;
+  background: rgba(31, 138, 76, 0.12);
+}
+
 .icon-button, .primary-button, .ghost-button, .danger-button {
   min-height: 38px;
   border: 1px solid var(--line);

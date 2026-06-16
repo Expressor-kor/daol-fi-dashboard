@@ -228,6 +228,7 @@ const els = {
   graphTestButton: $("#graphTestButton"),
   sharePointLoadButton: $("#sharePointLoadButton"),
   msAuthStatus: $("#msAuthStatus"),
+  msAccountBadge: $("#msAccountBadge"),
   exportJsonButton: $("#exportJsonButton"),
   importJsonInput: $("#importJsonInput"),
   exportCsvButton: $("#exportCsvButton"),
@@ -476,6 +477,13 @@ function setMicrosoftStatus(message, mode = "") {
   els.authToolbar?.classList.toggle("error", mode === "error");
 }
 
+function setMicrosoftAccountBadge(account) {
+  if (!els.msAccountBadge) return;
+  const label = account?.name || account?.username || "";
+  els.msAccountBadge.textContent = label ? `로그인: ${label}` : "로그인 안 됨";
+  els.msAccountBadge.classList.toggle("signed-in", Boolean(label));
+}
+
 function getMsalClient() {
   if (!microsoftConfigReady()) {
     throw new Error("microsoft-config-missing");
@@ -513,6 +521,7 @@ async function signInMicrosoft() {
       msAccount = result.account;
     }
     setMicrosoftStatus(`${msAccount?.name || msAccount?.username || "Microsoft"} 로그인됨`, "connected");
+    setMicrosoftAccountBadge(msAccount);
     return msAccount;
   } catch (error) {
     console.error(error);
@@ -4189,6 +4198,15 @@ function buildCsv() {
 
 if (microsoftConfigReady()) {
   setMicrosoftStatus(redirectOriginMatches() ? "Microsoft login ready" : "Open the registered redirect URL.", redirectOriginMatches() ? "" : "error");
+  try {
+    const cachedAccount = getMsalClient().getAllAccounts?.()[0];
+    if (cachedAccount) {
+      msAccount = cachedAccount;
+      setMicrosoftAccountBadge(cachedAccount);
+    }
+  } catch (e) {
+    /* config/redirect 미준비 시 무시 — 로그인 버튼 누르면 정상 표시됨 */
+  }
 } else {
   setMicrosoftStatus("Microsoft config required", "error");
 }
