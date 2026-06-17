@@ -2666,10 +2666,13 @@ function renderMemberSelect() {
   const self = findSelfMemberByLogin();
 
   if (self) {
+    // 본인 1개 옵션만 → 다른 멤버 선택 불가(잠금 효과). disabled는 쓰지 않는다
+    // (disabled면 formData가 memberId를 수집하지 않아 저장이 깨진다).
     els.opinionMember.innerHTML =
       `<option value="${self.id}">${escapeHtml(self.name)} · ${escapeHtml(self.team)}</option>`;
     els.opinionMember.value = self.id;
-    els.opinionMember.disabled = true;
+    els.opinionMember.disabled = false;
+    els.opinionMember.classList.add("locked-self");
     return;
   }
 
@@ -2682,7 +2685,9 @@ function renderMemberSelect() {
   els.opinionMember.innerHTML = upn
     ? `<option value="">계정 매칭 실패 — 관리자에게 email 확인 요청</option>`
     : `<option value="">로그인이 필요합니다</option>`;
-  els.opinionMember.disabled = true;
+  els.opinionMember.value = "";
+  els.opinionMember.disabled = false;
+  els.opinionMember.classList.remove("locked-self");
 }
 
 function renderFormsDefaults() {
@@ -4360,6 +4365,10 @@ els.opinionForm.addEventListener("submit", async event => {
   const rangePairs = activeStrategies.map(strategy => [strategy.rangeLowKey, strategy.rangeHighKey]);
   if (rangePairs.some(([low, high]) => Number(data[low]) > Number(data[high]))) {
     alert("레인지 하단은 상단보다 낮아야 합니다.");
+    return;
+  }
+  if (!data.memberId) {
+    alert("로그인 계정과 일치하는 본부원을 찾지 못해 저장할 수 없습니다.\nDAOL_FI_Members의 email 칸을 확인하세요.");
     return;
   }
   const member = memberById(data.memberId);

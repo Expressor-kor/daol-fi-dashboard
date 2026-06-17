@@ -176,7 +176,7 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 - ✅ **A3②** (2026-06-16) — `saveSharePointWeeklyOpinion`의 omit 목록에서 memberId 변형 4개 제거 → 저장 시 `memberId` 칸 실제 적재. 테스트 PASS.
 - ✅ **A1** (2026-06-16) — 상단 바 로그인 계정 배지(`#msAccountBadge`) 추가. 작업 메시지에 덮어씌워지지 않는 전용 표시.
 - ✅ **A1.1** (2026-06-16) — 로그인 상태에서 Login 버튼 숨김(`hidden` 토글). CSS `[hidden]` 강제 규칙 추가로 `.icon-button { display: inline-grid }` 충돌 해결.
-- ✅ **A2** (2026-06-17) — 의견 입력 드롭다운을 로그인 본인 1명으로 고정. `mapSharePointMember`에 `email` 읽기 추가, `findSelfMemberByLogin` 헬퍼(UPN↔email 매칭), `renderMemberSelect` 본인 고정+실패 잠금으로 교체.
+- ✅ **A2** (2026-06-17) — 의견 입력 드롭다운을 로그인 본인 1명으로 고정. `mapSharePointMember`에 `email` 읽기 추가, `findSelfMemberByLogin` 헬퍼(UPN↔email 매칭), `renderMemberSelect` 본인 고정으로 교체. 잠금은 **옵션 1개 제한** 방식(`disabled` 금지 — `formData`가 disabled 값을 수집하지 않아 저장이 깨짐). 저장 가드로 빈 memberId 거부.
 - **다음**: A4(최종 수정 시각).
 - 묶음 B(입력 null 무결성) / 묶음 C(금리 원천 일원화, D-9) 는 이후.
 
