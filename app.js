@@ -1909,20 +1909,60 @@ function setStrategyOmitState(strategyKey, skipped) {
   const strategy = STRATEGIES.find(item => item.key === strategyKey);
   if (!strategy) return;
   const form = els.opinionForm.elements;
-  [strategy.durationKey, strategy.rangeLowKey, strategy.rangeHighKey, `${strategy.key}Confidence`].forEach(name => {
+  const names = [strategy.durationKey, strategy.rangeLowKey, strategy.rangeHighKey,
+                 `${strategy.key}Confidence`, `${strategy.key}RangeSkip`];
+  names.forEach(name => {
     const field = form[name];
     if (!field) return;
-    field.disabled = skipped;
+    field.required = false;
+    if (skipped) {
+      if (field.type === "checkbox") field.checked = false;
+      else field.value = "";
+    }
+    field.classList.toggle("input-locked", skipped);
+  });
+}
+
+function setRangeOmitState(strategyKey, skipped) {
+  if (!els.opinionForm) return;
+  const strategy = STRATEGIES.find(item => item.key === strategyKey);
+  if (!strategy) return;
+  const form = els.opinionForm.elements;
+  [strategy.rangeLowKey, strategy.rangeHighKey].forEach(name => {
+    const field = form[name];
+    if (!field) return;
     field.required = false;
     if (skipped) field.value = "";
+    field.classList.toggle("input-locked", skipped);
   });
 }
 
 function updateOpinionStrategyControls() {
   STRATEGIES.forEach(strategy => {
     const status = els.opinionForm?.elements[`${strategy.key}Status`]?.value || "active";
-    setStrategyOmitState(strategy.key, status === "skip");
+    const stratSkipped = status === "skip";
+    setStrategyOmitState(strategy.key, stratSkipped);
+    if (!stratSkipped) {
+      const rangeSkip = !!els.opinionForm?.elements[`${strategy.key}RangeSkip`]?.checked;
+      setRangeOmitState(strategy.key, rangeSkip);
+    }
   });
+}
+
+function setDurationSelectValue(selectEl, value) {
+  if (!selectEl) return;
+  selectEl.querySelectorAll("option[data-transient]").forEach(option => option.remove());
+  const num = nullableNumber(value);
+  if (num === null) { selectEl.value = ""; return; }
+  const canonical = String(num);
+  if (![...selectEl.options].some(option => option.value === canonical)) {
+    const option = document.createElement("option");
+    option.value = canonical;
+    option.textContent = `${fmtSigned(num, 2)} (비표준)`;
+    option.dataset.transient = "1";
+    selectEl.appendChild(option);
+  }
+  selectEl.value = canonical;
 }
 
 function applyOpinionToForm(opinion) {
@@ -1931,13 +1971,18 @@ function applyOpinionToForm(opinion) {
   form.week.value = opinion?.week || selectedOpinionWeek;
   form.memberId.value = opinion?.memberId || form.memberId.value;
   STRATEGIES.forEach(strategy => {
-    const skipped = !opinion || [strategy.durationKey, strategy.rangeLowKey, strategy.rangeHighKey]
-      .every(key => nullableNumber(opinion[key]) === null);
+    const durNull  = nullableNumber(opinion?.[strategy.durationKey]) === null;
+    const lowNull  = nullableNumber(opinion?.[strategy.rangeLowKey]) === null;
+    const highNull = nullableNumber(opinion?.[strategy.rangeHighKey]) === null;
+    const skipped  = !opinion || (durNull && lowNull && highNull);
     if (form[`${strategy.key}Status`]) form[`${strategy.key}Status`].value = skipped ? "skip" : "active";
-    form[strategy.durationKey].value = opinion?.[strategy.durationKey] ?? "";
+    setDurationSelectValue(form[strategy.durationKey], opinion?.[strategy.durationKey]);
     form[strategy.rangeHighKey].value = opinion?.[strategy.rangeHighKey] ?? "";
-    form[strategy.rangeLowKey].value = opinion?.[strategy.rangeLowKey] ?? "";
-    form[`${strategy.key}Confidence`].value = opinion?.[`${strategy.key}Confidence`] ?? "3";
+    form[strategy.rangeLowKey].value  = opinion?.[strategy.rangeLowKey] ?? "";
+    if (form[`${strategy.key}RangeSkip`]) {
+      form[`${strategy.key}RangeSkip`].checked = !!opinion && !skipped && lowNull && highNull;
+    }
+    form[`${strategy.key}Confidence`].value = opinion?.[`${strategy.key}Confidence`] ?? "";
     form[`${strategy.key}RationaleText`].value = opinion ? strategyRationale(opinion, strategy.key) : "";
   });
   updateOpinionStrategyControls();
@@ -1999,6 +2044,7 @@ function clearOpinionInputs(keepSelection = true) {
     if (els.opinionForm.elements[`${strategy.key}Status`]) {
       els.opinionForm.elements[`${strategy.key}Status`].value = "active";
     }
+    setDurationSelectValue(els.opinionForm.elements[strategy.durationKey], null);
     els.opinionForm.elements[`${strategy.key}Confidence`].value = "3";
   });
   updateOpinionStrategyControls();
@@ -2042,6 +2088,10 @@ function numericInputValue(value) {
 
 function strategyIsSkipped(data, strategy) {
   return data[`${strategy.key}Status`] === "skip";
+}
+
+function rangeIsSkipped(data, strategy) {
+  return data[`${strategy.key}RangeSkip`] === "on";
 }
 
 function finiteNumber(value) {
@@ -4364,8 +4414,10 @@ els.loadOpinionButton?.addEventListener("click", async () => {
 });
 
 function handleOpinionStrategyStatusChange(event) {
-  const strategyKey = event.target.dataset.strategyStatus;
-  if (strategyKey) setStrategyOmitState(strategyKey, event.target.value === "skip");
+  const target = event.target;
+  if (target.dataset.strategyStatus || /RangeSkip$/.test(target.name || "")) {
+    updateOpinionStrategyControls();
+  }
 }
 
 els.opinionForm?.addEventListener("change", handleOpinionStrategyStatusChange);
@@ -4412,19 +4464,19 @@ els.opinionForm.addEventListener("submit", async event => {
   event.preventDefault();
   const data = formData(els.opinionForm);
   const activeStrategies = STRATEGIES.filter(strategy => !strategyIsSkipped(data, strategy));
-  const missingStrategy = activeStrategies.find(strategy =>
-    [strategy.durationKey, strategy.rangeLowKey, strategy.rangeHighKey, `${strategy.key}Confidence`]
-      .some(key => nullableNumber(data[key]) === null)
+  const rangeIncomplete = activeStrategies.find(strategy =>
+    !rangeIsSkipped(data, strategy) &&
+    (nullableNumber(data[strategy.rangeLowKey]) === null || nullableNumber(data[strategy.rangeHighKey]) === null)
   );
-  if (missingStrategy) {
-    alert(`${missingStrategy.title} 숫자 데이터를 입력하거나 입력 여부를 생략으로 선택해 주세요.`);
+  if (rangeIncomplete) {
+    alert(`${rangeIncomplete.title}: 레인지 상·하단을 모두 입력하거나 '레인지 생략'을 선택하세요.`);
     return;
   }
-  const rangePairs = activeStrategies.map(strategy => [strategy.rangeLowKey, strategy.rangeHighKey]);
-  if (rangePairs.some(([low, high]) => Number(data[low]) > Number(data[high]))) {
-    alert("레인지 하단은 상단보다 낮아야 합니다.");
-    return;
-  }
+  const rangeOrderBad = activeStrategies.find(strategy =>
+    !rangeIsSkipped(data, strategy) &&
+    Number(data[strategy.rangeLowKey]) > Number(data[strategy.rangeHighKey])
+  );
+  if (rangeOrderBad) { alert("레인지 하단은 상단보다 낮아야 합니다."); return; }
   if (!data.memberId) {
     alert("로그인 계정과 일치하는 본부원을 찾지 못해 저장할 수 없습니다.\nDAOL_FI_Members의 email 칸을 확인하세요.");
     return;
@@ -4436,7 +4488,9 @@ els.opinionForm.addEventListener("submit", async event => {
     existingOpinion ? "이미 저장된 의견이 있어 기존 내용을 수정합니다." : "새 의견으로 저장합니다."
   ].join("\n");
   if (!confirm(confirmMessage)) return;
-  const confidenceValues = activeStrategies.map(strategy => numericInputValue(data[`${strategy.key}Confidence`]));
+  const confidenceValues = activeStrategies
+    .map(strategy => numericInputValue(data[`${strategy.key}Confidence`]))
+    .filter(value => value !== null);
   const rationaleParts = [
     ["금리 방향성", data.rateRationaleText],
     ["커브", data.curveRationaleText],
@@ -4448,12 +4502,12 @@ els.opinionForm.addEventListener("submit", async event => {
     rateDuration: strategyIsSkipped(data, STRATEGIES[0]) ? null : numericInputValue(data.rateDuration),
     curveDuration: strategyIsSkipped(data, STRATEGIES[1]) ? null : numericInputValue(data.curveDuration),
     creditDuration: strategyIsSkipped(data, STRATEGIES[2]) ? null : numericInputValue(data.creditDuration),
-    ktb3yRangeLow: strategyIsSkipped(data, STRATEGIES[0]) ? null : numericInputValue(data.ktb3yRangeLow),
-    ktb3yRangeHigh: strategyIsSkipped(data, STRATEGIES[0]) ? null : numericInputValue(data.ktb3yRangeHigh),
-    curveSpreadRangeLow: strategyIsSkipped(data, STRATEGIES[1]) ? null : numericInputValue(data.curveSpreadRangeLow),
-    curveSpreadRangeHigh: strategyIsSkipped(data, STRATEGIES[1]) ? null : numericInputValue(data.curveSpreadRangeHigh),
-    creditSpreadRangeLow: strategyIsSkipped(data, STRATEGIES[2]) ? null : numericInputValue(data.creditSpreadRangeLow),
-    creditSpreadRangeHigh: strategyIsSkipped(data, STRATEGIES[2]) ? null : numericInputValue(data.creditSpreadRangeHigh),
+    ktb3yRangeLow: (strategyIsSkipped(data, STRATEGIES[0]) || rangeIsSkipped(data, STRATEGIES[0])) ? null : numericInputValue(data.ktb3yRangeLow),
+    ktb3yRangeHigh: (strategyIsSkipped(data, STRATEGIES[0]) || rangeIsSkipped(data, STRATEGIES[0])) ? null : numericInputValue(data.ktb3yRangeHigh),
+    curveSpreadRangeLow: (strategyIsSkipped(data, STRATEGIES[1]) || rangeIsSkipped(data, STRATEGIES[1])) ? null : numericInputValue(data.curveSpreadRangeLow),
+    curveSpreadRangeHigh: (strategyIsSkipped(data, STRATEGIES[1]) || rangeIsSkipped(data, STRATEGIES[1])) ? null : numericInputValue(data.curveSpreadRangeHigh),
+    creditSpreadRangeLow: (strategyIsSkipped(data, STRATEGIES[2]) || rangeIsSkipped(data, STRATEGIES[2])) ? null : numericInputValue(data.creditSpreadRangeLow),
+    creditSpreadRangeHigh: (strategyIsSkipped(data, STRATEGIES[2]) || rangeIsSkipped(data, STRATEGIES[2])) ? null : numericInputValue(data.creditSpreadRangeHigh),
     confidence: nullableNumber(Math.round(avg(confidenceValues))),
     rateConfidence: strategyIsSkipped(data, STRATEGIES[0]) ? null : numericInputValue(data.rateConfidence),
     curveConfidence: strategyIsSkipped(data, STRATEGIES[1]) ? null : numericInputValue(data.curveConfidence),

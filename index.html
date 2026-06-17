@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DAOL Weekly FI Strategy Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=market-tooltip-20260602">
+  <link rel="stylesheet" href="styles.css?v=b1b2-null-20260617">
 </head>
 <body>
   <div class="app-shell">
@@ -188,13 +188,27 @@
                 </select>
               </label>
               <label>듀레이션
-                <input name="rateDuration" type="number" step="0.01" placeholder="+0.10">
+                <select name="rateDuration" data-duration-select>
+                  <option value="">생략</option>
+                  <option value="-0.3">−0.30</option>
+                  <option value="-0.2">−0.20</option>
+                  <option value="-0.1">−0.10</option>
+                  <option value="-0.05">−0.05</option>
+                  <option value="0">0 (중립)</option>
+                  <option value="0.05">+0.05</option>
+                  <option value="0.1">+0.10</option>
+                  <option value="0.2">+0.20</option>
+                  <option value="0.3">+0.30</option>
+                </select>
               </label>
               <label>레인지 상단(%)
-                <input name="ktb3yRangeHigh" type="number" step="0.001" required>
+                <input name="ktb3yRangeHigh" type="number" step="0.001">
               </label>
               <label>레인지 하단(%)
-                <input name="ktb3yRangeLow" type="number" step="0.001" required>
+                <input name="ktb3yRangeLow" type="number" step="0.001">
+              </label>
+              <label class="range-skip-toggle">레인지 생략
+                <input type="checkbox" name="rateRangeSkip">
               </label>
               <label>확신도
                 <select name="rateConfidence">
@@ -203,6 +217,7 @@
                   <option value="2">2 다소 낮음</option>
                   <option value="4">4 높음</option>
                   <option value="5">5 매우 높음</option>
+                  <option value="">생략</option>
                 </select>
               </label>
               <label class="full">금리 방향성 근거 입력
@@ -226,13 +241,27 @@
                 </select>
               </label>
               <label>듀레이션
-                <input name="curveDuration" type="number" step="0.01" placeholder="-0.20" required>
+                <select name="curveDuration" data-duration-select>
+                  <option value="">생략</option>
+                  <option value="-0.3">−0.30</option>
+                  <option value="-0.2">−0.20</option>
+                  <option value="-0.1">−0.10</option>
+                  <option value="-0.05">−0.05</option>
+                  <option value="0">0 (중립)</option>
+                  <option value="0.05">+0.05</option>
+                  <option value="0.1">+0.10</option>
+                  <option value="0.2">+0.20</option>
+                  <option value="0.3">+0.30</option>
+                </select>
               </label>
               <label>레인지 상단(bp)
-                <input name="curveSpreadRangeHigh" type="number" step="0.1" required>
+                <input name="curveSpreadRangeHigh" type="number" step="0.1">
               </label>
               <label>레인지 하단(bp)
-                <input name="curveSpreadRangeLow" type="number" step="0.1" required>
+                <input name="curveSpreadRangeLow" type="number" step="0.1">
+              </label>
+              <label class="range-skip-toggle">레인지 생략
+                <input type="checkbox" name="curveRangeSkip">
               </label>
               <label>확신도
                 <select name="curveConfidence">
@@ -241,6 +270,7 @@
                   <option value="2">2 다소 낮음</option>
                   <option value="4">4 높음</option>
                   <option value="5">5 매우 높음</option>
+                  <option value="">생략</option>
                 </select>
               </label>
               <label class="full">커브 근거 입력
@@ -264,13 +294,27 @@
                 </select>
               </label>
               <label>듀레이션
-                <input name="creditDuration" type="number" step="0.01" placeholder="+0.05" required>
+                <select name="creditDuration" data-duration-select>
+                  <option value="">생략</option>
+                  <option value="-0.3">−0.30</option>
+                  <option value="-0.2">−0.20</option>
+                  <option value="-0.1">−0.10</option>
+                  <option value="-0.05">−0.05</option>
+                  <option value="0">0 (중립)</option>
+                  <option value="0.05">+0.05</option>
+                  <option value="0.1">+0.10</option>
+                  <option value="0.2">+0.20</option>
+                  <option value="0.3">+0.30</option>
+                </select>
               </label>
               <label>레인지 상단(bp)
-                <input name="creditSpreadRangeHigh" type="number" step="0.1" required>
+                <input name="creditSpreadRangeHigh" type="number" step="0.1">
               </label>
               <label>레인지 하단(bp)
-                <input name="creditSpreadRangeLow" type="number" step="0.1" required>
+                <input name="creditSpreadRangeLow" type="number" step="0.1">
+              </label>
+              <label class="range-skip-toggle">레인지 생략
+                <input type="checkbox" name="creditRangeSkip">
               </label>
               <label>확신도
                 <select name="creditConfidence">
@@ -279,6 +323,7 @@
                   <option value="2">2 다소 낮음</option>
                   <option value="4">4 높음</option>
                   <option value="5">5 매우 높음</option>
+                  <option value="">생략</option>
                 </select>
               </label>
               <label class="full">크레딧 근거 입력
@@ -731,6 +776,6 @@
   </div>
 
   <script src="vendor/msal-browser.min.js"></script>
-  <script src="app.js?v=raw-rates-force-20260602"></script>
+  <script src="app.js?v=b1b2-null-20260617"></script>
 </body>
 </html>

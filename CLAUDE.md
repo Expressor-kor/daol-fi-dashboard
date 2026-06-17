@@ -179,8 +179,10 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 - ✅ **A2** (2026-06-17) — 의견 입력 드롭다운을 로그인 본인 1명으로 고정. `mapSharePointMember`에 `email` 읽기 추가, `findSelfMemberByLogin` 헬퍼(UPN↔email 매칭), `renderMemberSelect` 본인 고정으로 교체. 잠금은 **옵션 1개 제한** 방식(`disabled` 금지 — `formData`가 disabled 값을 수집하지 않아 저장이 깨짐). 저장 가드로 빈 memberId 거부.
 - ✅ **B5** (2026-06-17) — 주차 변경 시 자동조회(`loadSelectedOpinionIntoForm`). 미저장 입력 있으면 확인창으로 보호(`opinionFormHasUnsavedInput` 헬퍼).
 - ✅ **A4** (2026-06-17) — 상단 바에 "최종 업데이트: YYYY-MM-DD HH:mm" (KST) 표시. `formatKstDateTime`(`Intl.DateTimeFormat` Asia/Seoul), `latestUpdatedAtIso`, `renderLastUpdatedBadge`. **묶음 A 전체 완료.**
+- ✅ **B1/B2** (2026-06-17) — 2계층 하이브리드(전략 통째 skip + 개별 필드 생략) + 듀레이션 고정스텝 드롭다운(기본값 생략). R-10 재적용: `setStrategyOmitState`에서 `disabled` 제거 → `input-locked` 클래스(pointer-events:none). 레인지 생략 토글(`*RangeSkip` 체크박스) 추가. 확신도에 `생략` 옵션 추가. submit 확신도 롤업에서 null 제외(`.filter(v => v !== null)`). 비표준 레거시 듀레이션은 임시 옵션으로 사실대로 표시.
 - **교훈**: 시각은 UTC(`Z`)로 저장 → 화면 표시는 항상 `Asia/Seoul`로 변환. slice로 자르면 9시간 오차.
-- **다음**: B1/B2(듀레이션 고정스텝 드롭다운 + 생략=null).
+- **B3으로 격상**: `avg()`가 `null`을 0으로 섞음(`Number(null)===0`) → 트렌드/Status 광역 집계의 null 제외를 라이브 데이터 대조와 함께 점검. (B1/B2에서는 submit 확신도 롤업만 국소 수정함.)
+- **다음**: B3(avg null 제외) → B4(종합의견 동일 패턴) → 묶음 C.
 - 묶음 C(금리 원천 일원화, D-9) 는 이후.
 
 > 전체 백로그·결정 로그·리스크는 차터 7·9·10장 참조.

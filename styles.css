@@ -1056,6 +1056,9 @@ svg {
   }
 }
 
+.input-locked { pointer-events: none; opacity: 0.45; background: var(--surface-muted, #f1f1f4); }
+.range-skip-toggle { font-size: 0.85em; }
+
 #opinionMember.locked-self {
   background-color: #f3f4f6;
   color: #374151;
