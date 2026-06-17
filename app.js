@@ -229,6 +229,7 @@ const els = {
   sharePointLoadButton: $("#sharePointLoadButton"),
   msAuthStatus: $("#msAuthStatus"),
   msAccountBadge: $("#msAccountBadge"),
+  lastUpdatedBadge: $("#lastUpdatedBadge"),
   exportJsonButton: $("#exportJsonButton"),
   importJsonInput: $("#importJsonInput"),
   exportCsvButton: $("#exportCsvButton"),
@@ -486,6 +487,41 @@ function setMicrosoftAccountBadge(account) {
   if (els.msSignInButton) {
     els.msSignInButton.hidden = Boolean(label);
   }
+}
+
+function formatKstDateTime(iso) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false
+  }).formatToParts(d).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+}
+
+function latestUpdatedAtIso() {
+  const pools = [
+    state.weeklyOpinions,
+    state.weeklySummaries,
+    state.marketWeekMappings,
+    state.marketData
+  ];
+  let latest = "";
+  pools.forEach(list => {
+    (Array.isArray(list) ? list : []).forEach(row => {
+      const u = row && row.updatedAt ? String(row.updatedAt) : "";
+      if (u && u > latest) latest = u;
+    });
+  });
+  return latest;
+}
+
+function renderLastUpdatedBadge() {
+  if (!els.lastUpdatedBadge) return;
+  const iso = latestUpdatedAtIso();
+  els.lastUpdatedBadge.textContent = `최종 업데이트: ${iso ? formatKstDateTime(iso) : "-"}`;
 }
 
 function getMsalClient() {
@@ -2640,6 +2676,7 @@ function render() {
   renderMarketDatePreview();
   renderMarketList();
   renderMembers();
+  renderLastUpdatedBadge();
 }
 
 function renderWeeks() {

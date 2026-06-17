@@ -178,7 +178,9 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 - ✅ **A1.1** (2026-06-16) — 로그인 상태에서 Login 버튼 숨김(`hidden` 토글). CSS `[hidden]` 강제 규칙 추가로 `.icon-button { display: inline-grid }` 충돌 해결.
 - ✅ **A2** (2026-06-17) — 의견 입력 드롭다운을 로그인 본인 1명으로 고정. `mapSharePointMember`에 `email` 읽기 추가, `findSelfMemberByLogin` 헬퍼(UPN↔email 매칭), `renderMemberSelect` 본인 고정으로 교체. 잠금은 **옵션 1개 제한** 방식(`disabled` 금지 — `formData`가 disabled 값을 수집하지 않아 저장이 깨짐). 저장 가드로 빈 memberId 거부.
 - ✅ **B5** (2026-06-17) — 주차 변경 시 자동조회(`loadSelectedOpinionIntoForm`). 미저장 입력 있으면 확인창으로 보호(`opinionFormHasUnsavedInput` 헬퍼).
-- **다음**: A4(최종 수정 시각) 또는 B1/B2(듀레이션 고정스텝 드롭다운 + 생략=null).
+- ✅ **A4** (2026-06-17) — 상단 바에 "최종 업데이트: YYYY-MM-DD HH:mm" (KST) 표시. `formatKstDateTime`(`Intl.DateTimeFormat` Asia/Seoul), `latestUpdatedAtIso`, `renderLastUpdatedBadge`. **묶음 A 전체 완료.**
+- **교훈**: 시각은 UTC(`Z`)로 저장 → 화면 표시는 항상 `Asia/Seoul`로 변환. slice로 자르면 9시간 오차.
+- **다음**: B1/B2(듀레이션 고정스텝 드롭다운 + 생략=null).
 - 묶음 C(금리 원천 일원화, D-9) 는 이후.
 
 > 전체 백로그·결정 로그·리스크는 차터 7·9·10장 참조.
