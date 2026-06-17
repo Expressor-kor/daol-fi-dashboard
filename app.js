@@ -1937,6 +1937,18 @@ function findOpinionForSelection(week, memberId) {
   ) || null;
 }
 
+function opinionFormHasUnsavedInput() {
+  if (!els.opinionForm) return false;
+  const data = formData(els.opinionForm);
+  return STRATEGIES.some(strategy => {
+    if (data[`${strategy.key}Status`] === "skip") return false;
+    const num = [strategy.durationKey, strategy.rangeLowKey, strategy.rangeHighKey]
+      .some(key => String(data[key] ?? "").trim() !== "");
+    const text = String(data[`${strategy.key}RationaleText`] ?? "").trim() !== "";
+    return num || text;
+  });
+}
+
 function clearOpinionInputs(keepSelection = true) {
   const week = els.opinionWeek?.value || selectedOpinionWeek;
   const memberId = els.opinionMember?.value || "";
@@ -4274,8 +4286,17 @@ els.weekSelect.addEventListener("change", event => {
 });
 
 els.opinionWeek?.addEventListener("change", event => {
-  selectedOpinionWeek = event.target.value;
+  const newWeek = event.target.value;
+
+  if (opinionFormHasUnsavedInput() &&
+      !confirm("저장하지 않은 입력 내용이 있습니다.\n버리고 선택한 회의의 저장 의견을 불러올까요?")) {
+    event.target.value = selectedOpinionWeek;
+    return;
+  }
+
+  selectedOpinionWeek = newWeek;
   updateOpinionLookupStatus();
+  loadSelectedOpinionIntoForm({ notify: false });
 });
 
 els.loadOpinionButton?.addEventListener("click", async () => {
