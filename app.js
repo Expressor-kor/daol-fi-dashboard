@@ -754,6 +754,7 @@ function mapSharePointMember(item) {
     id: appId || `sp-member-${item.id}`,
     name: String(fieldValue(fields, "name", title) || "").trim(),
     team: String(fieldValue(fields, "team", "") || "").trim(),
+    email: String(fieldValue(fields, "email", "") || "").trim().toLowerCase(),
     active: booleanField(fields, "active", true),
     sortOrder: numberField(fields, "sortOrder")
   };
@@ -2652,11 +2653,36 @@ function renderArchiveState() {
   if (els.archiveWeekButton) els.archiveWeekButton.textContent = "Re-archive week";
 }
 
+function findSelfMemberByLogin() {
+  const upn = String(msAccount?.username || "").trim().toLowerCase();
+  if (!upn) return null;
+  return state.members.find(member =>
+    member.active !== false &&
+    String(member.email || "").trim().toLowerCase() === upn
+  ) || null;
+}
+
 function renderMemberSelect() {
-  const members = activeMembers();
-  els.opinionMember.innerHTML = members.length
-    ? members.map(member => `<option value="${member.id}">${escapeHtml(member.name)} · ${escapeHtml(member.team)}</option>`).join("")
-    : `<option value="">설정에서 본부원을 추가하세요</option>`;
+  const self = findSelfMemberByLogin();
+
+  if (self) {
+    els.opinionMember.innerHTML =
+      `<option value="${self.id}">${escapeHtml(self.name)} · ${escapeHtml(self.team)}</option>`;
+    els.opinionMember.value = self.id;
+    els.opinionMember.disabled = true;
+    return;
+  }
+
+  const upn = String(msAccount?.username || "").trim();
+  console.warn(
+    "[A2] 로그인 계정과 일치하는 멤버를 찾지 못했습니다. " +
+    "DAOL_FI_Members의 email 칸이 이 UPN과 정확히 일치하는지 확인하세요. UPN =",
+    upn || "(로그인 안 됨)"
+  );
+  els.opinionMember.innerHTML = upn
+    ? `<option value="">계정 매칭 실패 — 관리자에게 email 확인 요청</option>`
+    : `<option value="">로그인이 필요합니다</option>`;
+  els.opinionMember.disabled = true;
 }
 
 function renderFormsDefaults() {
