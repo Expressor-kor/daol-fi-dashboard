@@ -181,8 +181,8 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 - ✅ **A4** (2026-06-17) — 상단 바에 "최종 업데이트: YYYY-MM-DD HH:mm" (KST) 표시. `formatKstDateTime`(`Intl.DateTimeFormat` Asia/Seoul), `latestUpdatedAtIso`, `renderLastUpdatedBadge`. **묶음 A 전체 완료.**
 - ✅ **B1/B2** (2026-06-17) — 2계층 하이브리드(전략 통째 skip + 개별 필드 생략) + 듀레이션 고정스텝 드롭다운(기본값 생략). R-10 재적용: `setStrategyOmitState`에서 `disabled` 제거 → `input-locked` 클래스(pointer-events:none). 레인지 생략 토글(`*RangeSkip` 체크박스) 추가. 확신도에 `생략` 옵션 추가. submit 확신도 롤업에서 null 제외(`.filter(v => v !== null)`). 비표준 레거시 듀레이션은 임시 옵션으로 사실대로 표시.
 - **교훈**: 시각은 UTC(`Z`)로 저장 → 화면 표시는 항상 `Asia/Seoul`로 변환. slice로 자르면 9시간 오차.
-- **B3으로 격상**: `avg()`가 `null`을 0으로 섞음(`Number(null)===0`) → 트렌드/Status 광역 집계의 null 제외를 라이브 데이터 대조와 함께 점검. (B1/B2에서는 submit 확신도 롤업만 국소 수정함.)
-- **다음**: B3(avg null 제외) → B4(종합의견 동일 패턴) → 묶음 C.
+- ✅ **B3** (2026-06-18) — `avg`/`median` null 제외 하드닝(검산 통과): `null`/`undefined`/`""`을 `Number()` 전에 필터링하여 0으로 섞이는 문제 근본 수정. trends 상세표(`durationTableRows`)에서 생략 의견을 "생략" 태그로 표시(차트·평균은 값 있는 것만). 메타에 `입력 N명` 추가. 작성자 공란(`_undefined`) 행: 빈 memberId 거부 가드로 재발 차단 확인(코드 변경 없음), 1건 복구·삭제는 사용자 SharePoint 작업.
+- **다음**: B4(종합의견 레거시 칸 누수) → 묶음 C(금리 원천 D-9).
 - 묶음 C(금리 원천 일원화, D-9) 는 이후.
 
 > 전체 백로그·결정 로그·리스크는 차터 7·9·10장 참조.

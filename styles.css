@@ -1058,6 +1058,8 @@ svg {
 
 .input-locked { pointer-events: none; opacity: 0.45; background: var(--surface-muted, #f1f1f4); }
 .range-skip-toggle { font-size: 0.85em; }
+.omit-tag { color: var(--text-muted, #8a8f98); font-size: 0.85em; font-style: italic; }
+.week-detail-table tr.omit-row td { opacity: 0.7; }
 
 #opinionMember.locked-self {
   background-color: #f3f4f6;

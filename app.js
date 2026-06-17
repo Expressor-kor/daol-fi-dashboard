@@ -1879,13 +1879,20 @@ function fmtSigned(value, digits = 2) {
 }
 
 function avg(values) {
-  const valid = values.map(Number).filter(Number.isFinite);
+  const valid = values
+    .filter(value => value !== null && value !== undefined && value !== "")
+    .map(Number)
+    .filter(Number.isFinite);
   if (!valid.length) return NaN;
   return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
 function median(values) {
-  const valid = values.map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  const valid = values
+    .filter(value => value !== null && value !== undefined && value !== "")
+    .map(Number)
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
   if (!valid.length) return NaN;
   const mid = Math.floor(valid.length / 2);
   return valid.length % 2 ? valid[mid] : (valid[mid - 1] + valid[mid]) / 2;
@@ -2984,27 +2991,35 @@ function chartPanelHtml(idValue, title, subtitle) {
 }
 
 function durationTableRows(strategy) {
-  const rows = state.weeklyOpinions
-    .filter(opinion => Number.isFinite(finiteNumber(opinion[strategy.durationKey])))
-    .sort((a, b) => b.week.localeCompare(a.week));
-  const weeks = [...new Set(rows.map(opinion => opinion.week))];
+  const allRows = state.weeklyOpinions.slice().sort((a, b) => b.week.localeCompare(a.week));
+  const weeks = [...new Set(allRows.map(opinion => opinion.week))];
 
   return weeks.map(week => {
-    const weekRows = rows.filter(opinion => opinion.week === week);
-    const avgDuration = avg(weekRows.map(opinion => opinion[strategy.durationKey]));
-    const avgPnl = avg(weekRows.map(opinion => strategyPnl(opinion, strategy)));
+    const weekRows = allRows.filter(opinion => opinion.week === week);
+    const finiteRows = weekRows.filter(opinion => Number.isFinite(finiteNumber(opinion[strategy.durationKey])));
+    const avgDuration = avg(finiteRows.map(opinion => opinion[strategy.durationKey]));
+    const avgPnl = avg(finiteRows.map(opinion => strategyPnl(opinion, strategy)));
     const detailRows = weekRows.map(opinion => {
       const member = memberById(opinion.memberId);
+      const durOmitted = nullableNumber(opinion[strategy.durationKey]) === null;
+      const rangeOmitted = nullableNumber(opinion[strategy.rangeLowKey]) === null
+        && nullableNumber(opinion[strategy.rangeHighKey]) === null;
       const pnl = strategyPnl(opinion, strategy);
       const ytdPnl = strategyYtdPnl(opinion, strategy);
       const confidence = strategyConfidence(opinion, strategy.key);
+      const durationCell = durOmitted
+        ? `<span class="omit-tag">생략</span>`
+        : fmtSigned(opinion[strategy.durationKey], 2);
+      const rangeCell = rangeOmitted
+        ? `<span class="omit-tag">생략</span>`
+        : `${fmt(opinion[strategy.rangeLowKey], strategy.key === "rate" ? 3 : 1)}~${fmt(opinion[strategy.rangeHighKey], strategy.key === "rate" ? 3 : 1)}${strategy.rangeUnit}`;
       return `
-        <tr>
+        <tr${durOmitted ? ' class="omit-row"' : ""}>
           <td>${escapeHtml(member.name)}</td>
-          <td>${fmtSigned(opinion[strategy.durationKey], 2)}</td>
-          <td>${fmt(opinion[strategy.rangeLowKey], strategy.key === "rate" ? 3 : 1)}~${fmt(opinion[strategy.rangeHighKey], strategy.key === "rate" ? 3 : 1)}${strategy.rangeUnit}</td>
+          <td>${durationCell}</td>
+          <td>${rangeCell}</td>
           <td class="rationale-cell">${escapeHtml(strategyRationale(opinion, strategy.key))}</td>
-          <td>${Number.isFinite(confidence) ? `<span class="pill">확신도 ${confidence}</span>` : "-"}</td>
+          <td>${!durOmitted && Number.isFinite(confidence) ? `<span class="pill">확신도 ${confidence}</span>` : "-"}</td>
           <td class="${scoreClass(pnl)}">${Number.isFinite(pnl) ? `${fmtSigned(pnl, 2)}bp` : "평가 대기"}</td>
           <td class="${scoreClass(ytdPnl)}">${Number.isFinite(ytdPnl) ? `${fmtSigned(ytdPnl, 2)}bp` : "평가 대기"}</td>
         </tr>
@@ -3019,7 +3034,7 @@ function durationTableRows(strategy) {
             <span>${weekRows.length}명 참여</span>
           </span>
           <span class="week-summary-meta">
-            <span>평균 입력 ${fmtSigned(avgDuration, 2)}</span>
+            <span>평균 입력 ${fmtSigned(avgDuration, 2)} · 입력 ${finiteRows.length}명</span>
             <span class="${scoreClass(avgPnl)}">평균 손익 ${Number.isFinite(avgPnl) ? `${fmtSigned(avgPnl, 2)}bp` : "평가 대기"}</span>
           </span>
         </summary>
