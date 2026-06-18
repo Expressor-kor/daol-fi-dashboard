@@ -119,7 +119,7 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 
 ## 8. 아키텍처 실측 (헷갈리기 쉬운 지점)
 
-- **금리 그래프 원천 = `FI_DailyRates` 리스트** (`state.dailyRates`). **코드에 `rates_slim.xlsx`를 직접 읽는 부분은 없다.** 차터 D-4(문서 라이브러리 엑셀)와 코드 현실이 불일치 → "묵은 값"의 원인. 단일 원천화는 **D-9(묶음 C, 구현 대기).**
+- **금리 그래프 원천 = SharePoint 문서 라이브러리 `rates_raw.xlsx`** (`state.dailyRates`). `fetchSharePointRatesBlob`이 Graph API로 `Shared Documents/주간전략회의/rates_raw.xlsx`를 다운로드 → `parseRatesWorkbook`(자체 xlsx 파서, 헤더 앵커 방식)이 파싱 → `normalizeDailyRate`가 `curveSpread`(`10Y−3Y`)·`creditSpread`(`AA-2Y−통안2Y`)를 자동 산출. `FI_DailyRates` 리스트는 `loadSharePointState`에서 아직 읽히나 직후 문서 라이브러리 파일이 **덮어쓰므로 사실상 은퇴 대기**(C4에서 CSV 백업 후 제거 예정).
 - **주차-기준일 매핑은 원천과 독립**: `FI_MarketWeekMappings.baseDate` → `date === baseDate`인 금리 행이 그 주차 스냅샷. 원천을 바꿔도 매핑 메커니즘은 그대로.
 - **컬럼명 자동 해석기** `resolveSharePointFieldNameFromSources`가 표시명/샘플키로 실제 내부 컬럼명을 찾아 매핑한다.
 - **상태 이중 저장**: `state` 전역 객체가 유일한 런타임 진실 원천. `saveState()`는 `localStorage`(키 `daol-fi-strategy-dashboard-v2`)에만 쓴다. `loadSharePointState()`는 SharePoint에서 읽어 `state`를 덮어쓴 뒤 `saveState()` 호출. 두 원천이 다를 땐 SharePoint가 이긴다.
@@ -127,7 +127,7 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 - **`els` 객체**: 모든 DOM 요소가 파일 상단(약 220~285행)의 `const els = {...}`에 일괄 캐시된다. HTML에 요소를 추가하면 `els`에도 반드시 추가해야 한다.
 - **`OPERATING_WEEK_CUTOFF = "2026-W24"`**: 이 상수보다 이른 주차는 운영 데이터로 취급하지 않는 필터(`filterOperatingWeeks`)가 걸려 있다. 데이터가 안 보일 때 이 상수를 먼저 확인.
 
-### `app.js` 구역 지도 (약 4,800행)
+### `app.js` 구역 지도 (약 4,980행)
 | 행 범위 | 내용 |
 |---|---|
 | 1 – 220 | 전역 상수·설정 (`MICROSOFT_CONFIG`, `STRATEGIES`, Archive 스키마 등) |
@@ -139,8 +139,9 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 | 920 – 1700 | 나머지 리스트 매퍼/저장 (Summary, Market, Archive 등) + `loadSharePointState` |
 | 1810 – 2600 | 순수 로직 (주차 유틸, 멤버 조회, 성과 계산, consensus, draft 생성) |
 | 2600 – 3260 | `render()` 및 하위 `render*()` 함수 (Overview, Charts, Performance, Archive) |
-| 3260 – 4400 | SVG 차트 드로잉 (`drawBase`, `drawAxes`, `drawStrategyChart` 등) |
-| 4400 – 4800 | 이벤트 리스너 (폼 제출, 버튼 클릭) + `render()` / `loadBundledRatesIfAvailable()` 최초 호출 |
+| 3260 – 4020 | SVG 차트 드로잉 (`drawBase`, `drawAxes`, `drawStrategyChart` 등) |
+| 4020 – 4200 | 엑셀 파싱 (`fetchSharePointRatesBlob`, `parseRatesWorkbook`, `loadBundledRatesIfAvailable`, `detectRateColumns` 등) |
+| 4400 – 4980 | 이벤트 리스너 (폼 제출, 버튼 클릭) + `render()` / `loadBundledRatesIfAvailable()` 최초 호출 |
 
 ### SharePoint 리스트 (5개 운영)
 | 리스트 | 용도 | 식별자/키 |
@@ -182,8 +183,9 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 - ✅ **B1/B2** (2026-06-17) — 2계층 하이브리드(전략 통째 skip + 개별 필드 생략) + 듀레이션 고정스텝 드롭다운(기본값 생략). R-10 재적용: `setStrategyOmitState`에서 `disabled` 제거 → `input-locked` 클래스(pointer-events:none). 레인지 생략 토글(`*RangeSkip` 체크박스) 추가. 확신도에 `생략` 옵션 추가. submit 확신도 롤업에서 null 제외(`.filter(v => v !== null)`). 비표준 레거시 듀레이션은 임시 옵션으로 사실대로 표시.
 - **교훈**: 시각은 UTC(`Z`)로 저장 → 화면 표시는 항상 `Asia/Seoul`로 변환. slice로 자르면 9시간 오차.
 - ✅ **B3** (2026-06-18) — `avg`/`median` null 제외 하드닝(검산 통과): `null`/`undefined`/`""`을 `Number()` 전에 필터링하여 0으로 섞이는 문제 근본 수정. trends 상세표(`durationTableRows`)에서 생략 의견을 "생략" 태그로 표시(차트·평균은 값 있는 것만). 메타에 `입력 N명` 추가. 작성자 공란(`_undefined`) 행: 빈 memberId 거부 가드로 재발 차단 확인(코드 변경 없음), 1건 복구·삭제는 사용자 SharePoint 작업.
-- **다음**: B4(종합의견 레거시 칸 누수) → 묶음 C(금리 원천 D-9).
-- 묶음 C(금리 원천 일원화, D-9) 는 이후.
+- ✅ **B4** (2026-06-18) — 종합의견(`FI_WeeklySummaries`) 저장 경로 레거시 칸 누수 점검 완료. `rationaleText`/`rationaleTags`는 body에 없고, `confidence`는 종합의견 리스트에서는 스키마 정의된 정상 칸(전체 종합 확신도 = 전략별 평균). `writeSharePointArchiveFields`에 자동 복구 로직(invalid field 파싱→제거→재시도)도 있어 이중 안전. **누수 없음, 코드 변경 없이 종료.**
+- ✅ **C2** (2026-06-18) — 금리 원천을 정적 `fetch("rates_raw.xlsx")` → SharePoint 문서 라이브러리 Graph 다운로드(`fetchSharePointRatesBlob`)로 교체. 파서·부호·차트·매핑 무변경. 미로그인 시 조용히 skip, 로그인 후 실패 시 가시적 경고. **배포 후 라이브 검증 대기.**
+- **다음**: C2 라이브 검증(값 스폿체크 + 갱신 증명) → C4(`FI_DailyRates` 은퇴, CSV 백업 선행).
 
 > 전체 백로그·결정 로그·리스크는 차터 7·9·10장 참조.
 
