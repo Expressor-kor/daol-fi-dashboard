@@ -275,10 +275,6 @@ const els = {
   marketWeek: $("#marketWeek"),
   marketBaseDate: $("#marketBaseDate"),
   marketDatePreview: $("#marketDatePreview"),
-  rateDateOptions: $("#rateDateOptions"),
-  rateFileInput: $("#rateFileInput"),
-  rateUploadStatus: $("#rateUploadStatus"),
-  rateCoverage: $("#rateCoverage"),
   clearMarketButton: $("#clearMarketButton"),
   latestMarketList: $("#latestMarketList"),
   memberForm: $("#memberForm"),
@@ -1200,65 +1196,6 @@ async function ensureSharePointArchiveStorage(siteId) {
   }
 }
 
-function mapSharePointDailyRate(item) {
-  const fields = item.fields || {};
-  return normalizeDailyRate({
-    date: normalizeDateText(fieldValue(fields, "date", fieldValue(fields, "Title", ""))),
-    ktb3y: numberField(fields, "ktb3y"),
-    ktb10y: numberField(fields, "ktb10y"),
-    msb2y: numberField(fields, "msb2y"),
-    creditAA2y: numberFieldAny(fields, ["creditAA2y", "creditAAm2y"]),
-    curveSpread: fieldValue(fields, "curveSpread", ""),
-    creditSpread: fieldValue(fields, "creditSpread", "")
-  });
-}
-
-function sharePointDailyRateFields(rate) {
-  return {
-    Title: rate.date,
-    date: rate.date,
-    ktb3y: Number(rate.ktb3y) || 0,
-    ktb10y: Number(rate.ktb10y) || 0,
-    curveSpread: Number(rate.curveSpread) || 0,
-    msb2y: Number(rate.msb2y) || 0,
-    creditAA2y: Number(rate.creditAA2y) || 0,
-    creditSpread: Number(rate.creditSpread) || 0
-  };
-}
-
-async function saveSharePointDailyRates(rates) {
-  const { site, list, columns, items, sampleFieldKeys } = await getSharePointListContext("FI_DailyRates");
-  const dateFieldName = resolveSharePointFieldNameFromSources(columns, sampleFieldKeys, "date");
-  const existingByDate = new Map(items.map(item => {
-    const fields = item.fields || {};
-    return [String(fieldValue(fields, dateFieldName, fieldValue(fields, "Title", "")) || ""), item];
-  }));
-  let created = 0;
-  let updated = 0;
-  for (const rate of rates) {
-    const fields = applySharePointFieldAliases(
-      resolveSharePointFields(columns, sharePointDailyRateFields(rate), sampleFieldKeys),
-      { creditAA2y: "creditAAm2y" }
-    );
-    const existing = existingByDate.get(rate.date);
-    if (existing) {
-      await graphFetch(
-        `/sites/${encodeURIComponent(site.id)}/lists/${encodeURIComponent(list.id)}/items/${encodeURIComponent(existing.id)}/fields`,
-        { method: "PATCH", body: fields }
-      );
-      updated += 1;
-    } else {
-      const item = await graphFetch(
-        `/sites/${encodeURIComponent(site.id)}/lists/${encodeURIComponent(list.id)}/items`,
-        { method: "POST", body: { fields } }
-      );
-      existingByDate.set(rate.date, item);
-      created += 1;
-    }
-  }
-  return { created, updated, total: rates.length };
-}
-
 function mapSharePointWeekMapping(item) {
   const fields = item.fields || {};
   return normalizeWeekMapping({
@@ -1364,46 +1301,6 @@ function mapSharePointUploadedRateFile(item) {
     maxDate: normalizeDateText(fieldValue(fields, "maxDate", "")),
     fileUrl: String(fieldValue(fields, "fileUrl", "") || "")
   };
-}
-
-function sharePointUploadedRateFileFields(file) {
-  return {
-    Title: file.fileName || file.id,
-    appId: file.id,
-    fileName: file.fileName || "",
-    uploadedAt: file.uploadedAt || new Date().toISOString(),
-    rowCount: Number(file.rowCount) || 0,
-    minDate: file.minDate || "",
-    maxDate: file.maxDate || "",
-    fileUrl: file.fileUrl || ""
-  };
-}
-
-async function saveSharePointUploadedRateFile(file) {
-  const { site, list, columns, items, sampleFieldKeys } = await getSharePointListContext("FI_UploadedRateFiles");
-  const appIdFieldName = resolveSharePointFieldNameFromSources(columns, sampleFieldKeys, "appId");
-  const fileNameFieldName = resolveSharePointFieldNameFromSources(columns, sampleFieldKeys, "fileName");
-  const uploadedAtFieldName = resolveSharePointFieldNameFromSources(columns, sampleFieldKeys, "uploadedAt");
-  const existing = items.find(item => {
-    const fields = item.fields || {};
-    return (
-      fieldValue(fields, appIdFieldName) === file.id ||
-      (fieldValue(fields, fileNameFieldName) === file.fileName && fieldValue(fields, uploadedAtFieldName) === file.uploadedAt)
-    );
-  });
-  const fields = resolveSharePointFields(columns, sharePointUploadedRateFileFields(file), sampleFieldKeys);
-  if (existing) {
-    await graphFetch(
-      `/sites/${encodeURIComponent(site.id)}/lists/${encodeURIComponent(list.id)}/items/${encodeURIComponent(existing.id)}/fields`,
-      { method: "PATCH", body: fields }
-    );
-    return { mode: "updated", itemId: existing.id };
-  }
-  const created = await graphFetch(
-    `/sites/${encodeURIComponent(site.id)}/lists/${encodeURIComponent(list.id)}/items`,
-    { method: "POST", body: { fields } }
-  );
-  return { mode: "created", itemId: created.id };
 }
 
 function mapSharePointSettings(item) {
@@ -2726,7 +2623,6 @@ function render() {
   renderDurationCharts();
   renderPerformance();
   renderArchiveView();
-  renderRateUploadState();
   renderMarketDatePreview();
   renderMarketList();
   renderMembers();
@@ -3328,24 +3224,6 @@ function performanceDetailRows() {
 
 function latestDailyRateDate() {
   return [...state.dailyRates].sort((a, b) => a.date.localeCompare(b.date)).at(-1)?.date || "";
-}
-
-function renderRateUploadState() {
-  const dates = [...state.dailyRates].map(row => row.date).sort();
-  if (els.rateDateOptions) els.rateDateOptions.innerHTML = dates.map(date => `<option value="${date}"></option>`).join("");
-  if (!dates.length) {
-    els.rateUploadStatus.textContent = "업로드된 금리 시계열이 없습니다.";
-    els.rateCoverage.innerHTML = emptyBlock("엑셀 파일을 업로드하면 기준일 후보가 표시됩니다.");
-    return;
-  }
-  const file = state.uploadedRateFiles.at(-1);
-  els.rateUploadStatus.textContent = `${file?.fileName || "업로드 파일"} · ${dates.length.toLocaleString()}개 일자 저장`;
-  els.rateCoverage.innerHTML = `
-    <div class="preview-grid">
-      <span><b>기간</b> ${dates[0]} ~ ${dates.at(-1)}</span>
-      <span><b>최근 업로드</b> ${file?.uploadedAt ? file.uploadedAt.slice(0, 19).replace("T", " ") : "-"}</span>
-    </div>
-  `;
 }
 
 function renderMarketDatePreview() {
@@ -4872,55 +4750,6 @@ els.marketWeek.addEventListener("change", event => {
 });
 
 els.marketBaseDate.addEventListener("change", renderMarketDatePreview);
-
-els.rateFileInput.addEventListener("change", async event => {
-  const [file] = event.target.files;
-  if (!file) return;
-  els.rateUploadStatus.textContent = "엑셀 파일을 읽는 중입니다...";
-  try {
-    const dailyRates = await parseRatesWorkbook(file);
-    const uploadedFile = {
-      id: id("rates-file"),
-      fileName: file.name,
-      uploadedAt: new Date().toISOString(),
-      rowCount: dailyRates.length,
-      minDate: dailyRates[0]?.date || "",
-      maxDate: dailyRates.at(-1)?.date || ""
-    };
-    state.dailyRates = dailyRates;
-    state.uploadedRateFiles.push(uploadedFile);
-    syncMappedMarketsFromDailyRates();
-    saveState();
-    render();
-    try {
-      setMicrosoftStatus("SharePoint daily rates 저장 중...");
-      const [rateResult, fileResult] = await Promise.all([
-        saveSharePointDailyRates(dailyRates),
-        saveSharePointUploadedRateFile(uploadedFile)
-      ]);
-      const mappedMarkets = state.marketWeekMappings
-        .map(mapping => state.marketData.find(row => row.week === mapping.week))
-        .filter(Boolean);
-      for (const market of mappedMarkets) {
-        await saveSharePointMarket(market);
-      }
-      setMicrosoftStatus(
-        `SharePoint rates ${rateResult.total} saved, uploaded file ${fileResult.mode}, mapped markets ${mappedMarkets.length}`,
-        "connected"
-      );
-    } catch (error) {
-      console.error(error);
-      setMicrosoftStatus(`rate upload local saved, SharePoint failed: ${shortErrorMessage(error)}`, "error");
-      alert(`금리 파일은 이 브라우저에 저장됐지만 SharePoint 저장은 실패했습니다.\n\n${error.message}`);
-    }
-  } catch (error) {
-    console.error(error);
-    alert("엑셀 파일을 읽지 못했습니다. Raw 시트와 필요한 금리 컬럼을 확인해 주세요.");
-    renderRateUploadState();
-  } finally {
-    event.target.value = "";
-  }
-});
 
 els.clearMemberButton.addEventListener("click", () => {
   els.memberForm.reset();
