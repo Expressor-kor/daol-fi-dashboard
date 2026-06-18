@@ -4015,11 +4015,26 @@ async function parseRatesWorkbook(file) {
   return sorted;
 }
 
+async function fetchSharePointRatesBlob() {
+  const site = await getSharePointSite();
+  const drivePath = `/${encodeURIComponent("주간전략회의")}/${encodeURIComponent("rates_raw.xlsx")}`;
+  const meta = await graphFetch(`/sites/${encodeURIComponent(site.id)}/drive/root:${drivePath}`);
+  const downloadUrl = meta["@microsoft.graph.downloadUrl"];
+  if (!downloadUrl) throw new Error("sharepoint-rates-download-url-missing");
+  const response = await fetch(downloadUrl);
+  if (!response.ok) throw new Error(`rates-download-failed: ${response.status}`);
+  return response.blob();
+}
+
 async function loadBundledRatesIfAvailable({ showStatus = true } = {}) {
+  let loggedIn = false;
   try {
-    const response = await fetch("rates_raw.xlsx", { cache: "no-store" });
-    if (!response.ok) return false;
-    const rates = await parseRatesWorkbook(await response.blob());
+    const client = getMsalClient();
+    const account = msAccount || client.getAllAccounts()[0];
+    if (!account) return false;
+    loggedIn = true;
+    const blob = await fetchSharePointRatesBlob();
+    const rates = await parseRatesWorkbook(blob);
     const bundledMaxDate = rates.at(-1)?.date || "";
     state.dailyRates = rates;
     state.uploadedRateFiles = [
@@ -4039,13 +4054,16 @@ async function loadBundledRatesIfAvailable({ showStatus = true } = {}) {
     const latest = rates.find(row => row.date === bundledMaxDate);
     if (showStatus && latest) {
       setMicrosoftStatus(
-        `로컬 raw 금리 반영: ${bundledMaxDate} 국고3Y ${fmt(latest.ktb3y, 3)}%, 커브 ${fmt(latest.curveSpread, 1)}bp, 크레딧 ${fmt(latest.creditSpread, 1)}bp`,
+        `SharePoint 금리 반영: ${bundledMaxDate} 국고3Y ${fmt(latest.ktb3y, 3)}%, 커브 ${fmt(latest.curveSpread, 1)}bp, 크레딧 ${fmt(latest.creditSpread, 1)}bp`,
         "connected"
       );
     }
     return true;
   } catch (error) {
-    console.warn("bundled raw rates load skipped", error);
+    console.warn("SharePoint 금리 파일 로드 실패", error);
+    if (loggedIn) {
+      setMicrosoftStatus("금리 파일 로드 실패 — SharePoint 주간전략회의/rates_raw.xlsx 확인", "error");
+    }
     return false;
   }
 }
