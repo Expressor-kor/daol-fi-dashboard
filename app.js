@@ -195,7 +195,6 @@ const sampleData = {
   dailyRates: [],
   marketWeekMappings: [],
   marketMappingHistory: [],
-  uploadedRateFiles: [],
   weeklySummaries: [],
   settings: { ...DEFAULT_SETTINGS },
   performanceSnapshots: [],
@@ -339,7 +338,6 @@ function normalizeState(data) {
       ? data.marketWeekMappings.map(normalizeWeekMapping).filter(Boolean)
       : legacyMarketMappings(data.marketData)),
     marketMappingHistory: filterOperatingWeeks(Array.isArray(data.marketMappingHistory) ? data.marketMappingHistory : []),
-    uploadedRateFiles: Array.isArray(data.uploadedRateFiles) ? data.uploadedRateFiles : [],
     weeklySummaries: filterOperatingWeeks(Array.isArray(data.weeklySummaries) ? data.weeklySummaries : []),
     settings: normalizeSettings(data.settings),
     performanceSnapshots: Array.isArray(data.performanceSnapshots) ? data.performanceSnapshots : [],
@@ -1289,19 +1287,6 @@ async function saveSharePointMappingHistory(history) {
   return { mode: "created", itemId: created.id };
 }
 
-function mapSharePointUploadedRateFile(item) {
-  const fields = item.fields || {};
-  const title = String(fieldValue(fields, "Title", "") || "").trim();
-  return {
-    id: String(fieldValue(fields, "appId", `sp-rate-file-${item.id}`) || "").trim(),
-    fileName: String(fieldValue(fields, "fileName", title) || "").trim(),
-    uploadedAt: String(fieldValue(fields, "uploadedAt", "") || ""),
-    rowCount: numberField(fields, "rowCount"),
-    minDate: normalizeDateText(fieldValue(fields, "minDate", "")),
-    maxDate: normalizeDateText(fieldValue(fields, "maxDate", "")),
-    fileUrl: String(fieldValue(fields, "fileUrl", "") || "")
-  };
-}
 
 function mapSharePointSettings(item) {
   const fields = item.fields || {};
@@ -1654,8 +1639,7 @@ async function loadSharePointState() {
       "FI_WeeklyOpinions",
       "FI_MarketData",
       "FI_MarketWeekMappings",
-      "FI_MarketMappingHistory",
-      "FI_UploadedRateFiles"
+      "FI_MarketMappingHistory"
     ];
     const missing = requiredLists.filter(name => !lists.has(name));
     if (missing.length) throw new Error(`list-not-found:${missing.join(",")}`);
@@ -1666,7 +1650,6 @@ async function loadSharePointState() {
       marketItems,
       weekMappingItems,
       mappingHistoryItems,
-      uploadedRateFileItems,
       settingsItems,
       archiveItems,
       archiveMemberItems,
@@ -1681,7 +1664,6 @@ async function loadSharePointState() {
       readSharePointListItems(site.id, lists.get("FI_MarketData")),
       readSharePointListItems(site.id, lists.get("FI_MarketWeekMappings"), 5000),
       readSharePointListItems(site.id, lists.get("FI_MarketMappingHistory"), 5000),
-      readSharePointListItems(site.id, lists.get("FI_UploadedRateFiles"), 5000),
       lists.has("FI_Settings") ? readSharePointListItems(site.id, lists.get("FI_Settings")) : Promise.resolve([]),
       readOptionalArchiveList(site.id, lists, ARCHIVE_LIST_NAMES.archives, mapSharePointArchiveHeader),
       readOptionalArchiveList(site.id, lists, ARCHIVE_LIST_NAMES.members, mapSharePointArchiveMember),
@@ -1703,7 +1685,6 @@ async function loadSharePointState() {
       dailyRates: [],
       marketWeekMappings: weekMappingItems.map(mapSharePointWeekMapping).filter(Boolean),
       marketMappingHistory: mappingHistoryItems.map(mapSharePointMappingHistory).filter(item => item.week && item.baseDate),
-      uploadedRateFiles: uploadedRateFileItems.map(mapSharePointUploadedRateFile).filter(item => item.id && item.fileName),
       settings: sharePointSettings || state.settings,
       weeklyArchives: archiveItems.filter(item => item.archiveId && item.week),
       weeklyArchiveMembers: archiveMemberItems.filter(item => item.archiveId && item.memberId),
@@ -3912,17 +3893,6 @@ async function loadBundledRatesIfAvailable({ showStatus = true } = {}) {
     const rates = await parseRatesWorkbook(blob);
     const bundledMaxDate = rates.at(-1)?.date || "";
     state.dailyRates = rates;
-    state.uploadedRateFiles = [
-      ...state.uploadedRateFiles.filter(file => file.fileName !== "rates_raw.xlsx"),
-      {
-        id: "bundled-rates-raw",
-        fileName: "rates_raw.xlsx",
-        uploadedAt: new Date().toISOString(),
-        rowCount: rates.length,
-        minDate: rates[0]?.date || "",
-        maxDate: bundledMaxDate
-      }
-    ];
     syncMappedMarketsFromDailyRates();
     saveState();
     render();
