@@ -399,7 +399,7 @@ summary:focus-visible {
 .lookup-button { align-self: end; height: 40px; }
 .form-grid.member-only { grid-template-columns: minmax(260px, 420px); }
 .strategy-input-grid {
-  grid-template-columns: repeat(5, minmax(108px, 1fr));
+  grid-template-columns: 1fr 1fr 1fr 1fr auto 1fr;
   gap: 10px;
 }
 
@@ -1057,7 +1057,8 @@ svg {
 }
 
 .input-locked { pointer-events: none; opacity: 0.45; background: var(--surface-muted, #f1f1f4); }
-.range-skip-toggle { font-size: 0.85em; }
+.range-skip-toggle { font-size: 0.85em; white-space: nowrap; }
+.range-skip-toggle input[type="checkbox"] { width: 18px; height: 18px; justify-self: start; }
 .omit-tag { color: var(--text-muted, #8a8f98); font-size: 0.85em; font-style: italic; }
 .week-detail-table tr.omit-row td { opacity: 0.7; }
 
