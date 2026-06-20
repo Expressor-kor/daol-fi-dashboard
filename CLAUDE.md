@@ -127,21 +127,21 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 - **`els` 객체**: 모든 DOM 요소가 파일 상단(약 220~285행)의 `const els = {...}`에 일괄 캐시된다. HTML에 요소를 추가하면 `els`에도 반드시 추가해야 한다.
 - **`OPERATING_WEEK_CUTOFF = "2026-W24"`**: 이 상수보다 이른 주차는 운영 데이터로 취급하지 않는 필터(`filterOperatingWeeks`)가 걸려 있다. 데이터가 안 보일 때 이 상수를 먼저 확인.
 
-### `app.js` 구역 지도 (약 4,800행)
+### `app.js` 구역 지도 (약 4,720행)
 | 행 범위 | 내용 |
 |---|---|
-| 1 – 220 | 전역 상수·설정 (`MICROSOFT_CONFIG`, `STRATEGIES`, Archive 스키마 등) |
-| 220 – 280 | DOM 캐시(`els`), 전역 변수(`state`, `selectedWeek` 등) |
-| 280 – 430 | 로컬 상태 관리 (`loadState`, `saveState`, `normalizeState`, `filterOperatingWeeks`) |
-| 430 – 550 | MSAL 인증 (`signInMicrosoft`, `getMsalClient`, `setMicrosoftStatus`, `setMicrosoftAccountBadge`) |
-| 550 – 700 | Graph API 헬퍼 (`graphFetch`, `resolveSharePointField*`, `omitSharePointFields`) |
-| 700 – 920 | 멤버·의견 매퍼/저장 (`mapSharePointMember/Opinion`, `saveSharePoint*`) |
+| 1 – 218 | 전역 상수·설정 (`MICROSOFT_CONFIG`, `STRATEGIES`, Archive 스키마 등) |
+| 219 – 285 | DOM 캐시(`els`), 전역 변수(`state`, `selectedWeek` 등) |
+| 286 – 425 | 로컬 상태 관리 (`loadState`, `saveState`, `normalizeState`, `filterOperatingWeeks`) |
+| 425 – 580 | MSAL 인증 (`signInMicrosoft`, `getMsalClient`, `setMicrosoftStatus`, `setMicrosoftAccountBadge`, `renderLastUpdatedBadge`) |
+| 580 – 740 | Graph API 헬퍼 (`graphFetch`, `readSharePointListItems`, `resolveSharePointField*`, `omitSharePointFields`, `fieldValue`) |
+| 740 – 920 | 멤버·의견 매퍼/저장 (`mapSharePointMember/Opinion`, `saveSharePoint*`) |
 | 920 – 1640 | 나머지 리스트 매퍼/저장 (Summary, Market, Archive 등) + `loadSharePointState` |
-| 1640 – 2610 | 순수 로직 (주차 유틸, 멤버 조회, 성과 계산, consensus, draft 생성) |
-| 2610 – 3230 | `render()` 및 하위 `render*()` 함수 (Overview, Charts, Performance, Archive) |
-| 3230 – 3890 | SVG 차트 드로잉 (`drawBase`, `drawAxes`, `drawStrategyChart` 등) |
-| 3890 – 4080 | 엑셀 파싱 (`fetchSharePointRatesBlob`, `parseRatesWorkbook`, `loadBundledRatesIfAvailable`, `detectRateColumns` 등) |
-| 4250 – 4800 | 이벤트 리스너 (폼 제출, 버튼 클릭) + `render()` / `loadBundledRatesIfAvailable()` 최초 호출 |
+| 1640 – 2545 | 순수 로직 (주차 유틸, 멤버 조회, 성과 계산, consensus, draft 생성) |
+| 2545 – 3230 | `render()` 및 하위 `render*()` 함수 (Overview, Charts, Performance, Archive, Members) |
+| 3230 – 3790 | SVG 차트 드로잉 (`drawBase`, `drawAxes`, `drawStrategyChart` 등) |
+| 3790 – 4175 | 엑셀 파싱 (`fetchSharePointRatesBlob`, `parseRatesWorkbook`, `loadBundledRatesIfAvailable`, `detectRateColumns` 등) |
+| 4175 – 4722 | 이벤트 리스너 (폼 제출, 버튼 클릭) + `render()` / `loadBundledRatesIfAvailable()` 최초 호출 |
 
 ### SharePoint 리스트 (5개 운영)
 | 리스트 | 용도 | 식별자/키 |
