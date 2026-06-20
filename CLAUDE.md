@@ -153,7 +153,7 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 | `FI_WeeklySummaries` | 종합의견 | 키 = `Title` (= week) |
 
 > Archive 7종(`FI_WeeklyArchive*` 등) + `FI_MarketMappingHistory`는 **보존만, 삭제 금지.**
-> `FI_DailyRates`는 read 제거 완료(C4-2), 리스트 자체는 SharePoint에 잔존(삭제 불필요 — 데이터 보존). `FI_UploadedRateFiles`는 read 잔존(Stage 2 정리 대기). `FI_Settings`는 폐기 권고.
+> **폐기 4종(`FI_DailyRates`·`FI_UploadedRateFiles`·`FI_Settings`·`rates_slim.xlsx`)은 코드·SharePoint 양쪽에서 완전 삭제 완료**(C4-2·C4-3·C4-3b·C4-4, 세션7~10). 설정은 이제 로컬 `DEFAULT_SETTINGS`(`pnlUnit:"bp"` / `evaluationLagWeeks:1`)로 항상 동작 — SharePoint 설정 저장 경로 없음(원래도 자동 기본 upsert뿐이었음). 향후 설정 영속화가 필요하면 **새 설계로 재도입**(옛 구조 복원 아님, D-16). 4종 CSV/Excel 백업(세션7)은 보존 — 복원 필요 시 백업에서.
 
 ---
 
@@ -187,7 +187,10 @@ DAOL 채권운용본부 **주간전략회의 의사결정을 DB화**하는 라�
 - ✅ **C2** (2026-06-18) — 금리 원천을 정적 `fetch("rates_raw.xlsx")` → SharePoint 문서 라이브러리 Graph 다운로드(`fetchSharePointRatesBlob`)로 교체. 파서·부호·차트·매핑 무변경. 미로그인 시 조용히 skip, 로그인 후 실패 시 가시적 경고. **배포 후 라이브 검증 대기.**
 - ✅ **C4-2** (2026-06-19) — `loadSharePointState`에서 `FI_DailyRates` read 제거. requiredLists·Promise.all 슬롯·구조해체 변수(`dailyRateItems`) 삭제, `dailyRates: []`로 치환하여 localStorage 묵은값 잔상(R-15) 소멸. 금리는 `loadBundledRatesIfAvailable`(문서파일)이 유일 공급.
 - ✅ **C4-3** (2026-06-19) — 금리 엑셀 업로드 UI 은퇴. index.html 패널 제거, els 등록 4개·change 핸들러·render 호출 제거, 죽은 함수 6개(`mapSharePointDailyRate`, `saveSharePointDailyRates`, `sharePointDailyRateFields`, `saveSharePointUploadedRateFile`, `sharePointUploadedRateFileFields`, `renderRateUploadState`) 정의 삭제. `FI_UploadedRateFiles` 백엔드·`state.uploadedRateFiles`·`loadBundledRatesIfAvailable` 무변경(Stage 2 대기).
-- **다음**: C4-2/C4-3 라이브 검증 → C4-4(Stage 2: `FI_UploadedRateFiles` read + `state.uploadedRateFiles` 정리).
+- ✅ **C4-3b** (2026-06-19) — `FI_UploadedRateFiles` 백엔드 완전 제거(8지점·31줄, 4802→4771). `state.uploadedRateFiles` 소멸(R-16: `normalizeState`가 명시 재구성이라 통과 라인 제거로 필드 자체 제거). `loadBundledRatesIfAvailable`의 `uploadedRateFiles` 메타 기록 블록만 제거 — 차트 데이터(`state.dailyRates`)·`bundledMaxDate` 보존. Promise.all 14→13 정합.
+- ✅ **C4-4** (2026-06-20) — **폐기 4종 실삭제 + `FI_Settings` 코드 정리.** `FI_Settings` read/write/매퍼 9지점 제거(50줄, 4772→4722, Promise.all 13→12 정합). settings 전용 함수 3개(`mapSharePointSettings`·`sharePointSettingsFields`·`saveSharePointSettings`)만 제거하고 공용 함수(`getSharePointListContext`·`normalizeSettings`·`DEFAULT_SETTINGS`·`resolveSharePointFields`·`fieldValue`·`graphFetch`)는 보존. 이후 SharePoint UI에서 `rates_slim.xlsx`·`FI_DailyRates`·`FI_UploadedRateFiles`·`FI_Settings` 실삭제(비가역, 백업 선행+명시 승인). 설정은 로컬 `DEFAULT_SETTINGS`로 고정. **묶음 C 전체 종료.**
+- ✅ **백로그 6 정찰** (2026-06-20, 읽기전용) — `readSharePointListItems`(유일 read 경로)가 `@odata.nextLink` `while` 루프로 **페이징 완비** 확인. `top` 인자는 페이지 크기일 뿐 총량 상한 아님. `/items?` 우회 read 경로 0건. 서버가 위임 임계로 거부하면 `graphFetch`가 graph-NNN로 **시끄럽게 실패**(조용한 누락 불가) → **R-1 사실상 닫힘, 코드 변경 불필요.** 선택적 후속(저volume이라 비긴급): graphFetch 429 재시도(backoff), 저장 경로 "전체 read 후 탐색"→표적 `$filter` 조회.
+- **다음**: **백로그 7 — 성과 계산 화면 6장 검산값 일치 확인**(검증). 평가 시차 = `evaluationLagWeeks` 로컬 기본 **1주**(FI_Settings 삭제로 코드 기본값 고정).
 
 > 전체 백로그·결정 로그·리스크는 차터 7·9·10장 참조.
 
