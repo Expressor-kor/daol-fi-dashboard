@@ -1288,49 +1288,6 @@ async function saveSharePointMappingHistory(history) {
 }
 
 
-function mapSharePointSettings(item) {
-  const fields = item.fields || {};
-  const title = String(fieldValue(fields, "Title", "") || "").trim();
-  const appId = String(fieldValue(fields, "appId", title) || "").trim();
-  if (title !== "default" && appId !== "default") return null;
-  return normalizeSettings({
-    pnlUnit: fieldValue(fields, "pnlUnit", DEFAULT_SETTINGS.pnlUnit),
-    evaluationLagWeeks: fieldValue(fields, "evaluationLagWeeks", DEFAULT_SETTINGS.evaluationLagWeeks)
-  });
-}
-
-function sharePointSettingsFields(settings) {
-  const normalized = normalizeSettings(settings);
-  return {
-    Title: "default",
-    appId: "default",
-    pnlUnit: normalized.pnlUnit,
-    evaluationLagWeeks: normalized.evaluationLagWeeks,
-    updatedAt: new Date().toISOString()
-  };
-}
-
-async function saveSharePointSettings(settings) {
-  const { site, list, columns, items, sampleFieldKeys } = await getSharePointListContext("FI_Settings");
-  const appIdFieldName = resolveSharePointFieldNameFromSources(columns, sampleFieldKeys, "appId");
-  const existing = items.find(item => {
-    const fields = item.fields || {};
-    return fieldValue(fields, "Title") === "default" || fieldValue(fields, appIdFieldName) === "default";
-  });
-  const fields = resolveSharePointFields(columns, sharePointSettingsFields(settings), sampleFieldKeys);
-  if (existing) {
-    await graphFetch(
-      `/sites/${encodeURIComponent(site.id)}/lists/${encodeURIComponent(list.id)}/items/${encodeURIComponent(existing.id)}/fields`,
-      { method: "PATCH", body: fields }
-    );
-    return { mode: "updated", itemId: existing.id };
-  }
-  const created = await graphFetch(
-    `/sites/${encodeURIComponent(site.id)}/lists/${encodeURIComponent(list.id)}/items`,
-    { method: "POST", body: { fields } }
-  );
-  return { mode: "created", itemId: created.id };
-}
 
 function mapSharePointArchiveHeader(item) {
   const fields = item.fields || {};
@@ -1650,7 +1607,6 @@ async function loadSharePointState() {
       marketItems,
       weekMappingItems,
       mappingHistoryItems,
-      settingsItems,
       archiveItems,
       archiveMemberItems,
       archiveOpinionStrategyItems,
@@ -1664,7 +1620,6 @@ async function loadSharePointState() {
       readSharePointListItems(site.id, lists.get("FI_MarketData")),
       readSharePointListItems(site.id, lists.get("FI_MarketWeekMappings"), 5000),
       readSharePointListItems(site.id, lists.get("FI_MarketMappingHistory"), 5000),
-      lists.has("FI_Settings") ? readSharePointListItems(site.id, lists.get("FI_Settings")) : Promise.resolve([]),
       readOptionalArchiveList(site.id, lists, ARCHIVE_LIST_NAMES.archives, mapSharePointArchiveHeader),
       readOptionalArchiveList(site.id, lists, ARCHIVE_LIST_NAMES.members, mapSharePointArchiveMember),
       readOptionalArchiveList(site.id, lists, ARCHIVE_LIST_NAMES.opinionStrategies, mapSharePointArchiveOpinionStrategy),
@@ -1675,8 +1630,6 @@ async function loadSharePointState() {
         ? readSharePointListItems(site.id, lists.get(WEEKLY_SUMMARY_LIST_NAME), 5000)
         : Promise.resolve([])
     ]);
-    const sharePointSettings = settingsItems.map(mapSharePointSettings).find(Boolean);
-
     const nextState = normalizeState({
       ...state,
       members: memberItems.map(mapSharePointMember).filter(member => member.id && member.name),
@@ -1685,7 +1638,7 @@ async function loadSharePointState() {
       dailyRates: [],
       marketWeekMappings: weekMappingItems.map(mapSharePointWeekMapping).filter(Boolean),
       marketMappingHistory: mappingHistoryItems.map(mapSharePointMappingHistory).filter(item => item.week && item.baseDate),
-      settings: sharePointSettings || state.settings,
+      settings: state.settings,
       weeklyArchives: archiveItems.filter(item => item.archiveId && item.week),
       weeklyArchiveMembers: archiveMemberItems.filter(item => item.archiveId && item.memberId),
       weeklyArchiveOpinionStrategies: archiveOpinionStrategyItems.filter(item => item.archiveId && item.memberId && item.strategyKey),
@@ -1696,16 +1649,13 @@ async function loadSharePointState() {
     });
     state = nextState;
     saveState();
-    if (!sharePointSettings && lists.has("FI_Settings")) {
-      saveSharePointSettings(state.settings).catch(error => console.warn("FI_Settings default upsert failed", error));
-    }
     if (!state.weeklyOpinions.some(item => item.week === selectedWeek) && !state.marketData.some(item => item.week === selectedWeek)) {
       selectedWeek = latestWeek();
     }
     render();
     const rawApplied = await loadBundledRatesIfAvailable({ showStatus: false });
     setMicrosoftStatus(
-      `SharePoint 불러오기 성공: members ${state.members.length}, opinions ${state.weeklyOpinions.length}, market ${state.marketData.length}, rates ${state.dailyRates.length}${rawApplied ? " (local raw applied)" : ""}, mappings ${state.marketWeekMappings.length}, settings ${sharePointSettings ? "loaded" : "local"}`,
+      `SharePoint 불러오기 성공: members ${state.members.length}, opinions ${state.weeklyOpinions.length}, market ${state.marketData.length}, rates ${state.dailyRates.length}${rawApplied ? " (local raw applied)" : ""}, mappings ${state.marketWeekMappings.length}, settings local`,
       "connected"
     );
   } catch (error) {
