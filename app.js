@@ -28,7 +28,6 @@ const DEFAULT_SETTINGS = {
 const ARCHIVE_CALCULATION_VERSION = 1;
 const WEEKLY_SUMMARY_LIST_NAME = "FI_WeeklySummaries";
 const WEEKLY_SUMMARY_SCHEMA = [
-  ["appId", "text"],
   ["week", "text"],
   ["rateDuration", "number"],
   ["curveDuration", "number"],
@@ -998,7 +997,6 @@ function mapSharePointWeeklySummary(item) {
 function sharePointWeeklySummaryFields(summary) {
   return {
     Title: summary.week,
-    appId: summary.id || summary.week,
     week: summary.week,
     rateDuration: Number(summary.rateDuration) || 0,
     curveDuration: Number(summary.curveDuration) || 0,
